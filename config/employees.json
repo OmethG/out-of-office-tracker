@@ -1,5 +1,9 @@
 [
-  { "name": "Jane Perera", "email": "jane@example.com" },
-  { "name": "Kasun Silva", "email": "kasun@example.com" },
-  { "name": "Amaya Fernando", "email": "amaya@example.com" }
+  { "name": "Isuru", "email": "pro@methg.com" },
+  { "name": "Maheshi", "email": "sales@methg.com" },
+  { "name": "Sachini", "email": "cs@methg.com" },
+  { "name": "Gayan", "email": "tech@methg.com" },
+  { "name": "Dulhan", "email": "tech@methg.com" },
+  { "name": "Chamindu", "email": "projects@methg.com" },
+  { "name": "Priya", "email": "bd@methg.com" }
 ]
