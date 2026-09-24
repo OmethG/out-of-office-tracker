@@ -57,8 +57,8 @@ export default function Home() {
     return (
       <main style={wrap}>
         <div style={card}>
-          <h1 style={{ fontSize: 20 }}>Request sent</h1>
-          <p style={{ color: '#555' }}>Your manager has been notified and will approve or decline shortly.</p>
+          <h1 style={{ fontSize: 20 }}>Request Submitted</h1>
+          <p style={{ color: '#555' }}>Your manager has been notified and will review your request shortly.</p>
           {warning && <p style={{ color: '#b8860b', fontSize: 13 }}>{warning}</p>}
         </div>
       </main>
@@ -68,12 +68,12 @@ export default function Home() {
   return (
     <main style={wrap}>
       <form onSubmit={handleSubmit} style={card}>
-        <h1 style={{ fontSize: 20, marginBottom: 4 }}>Leaving the office?</h1>
+        <h1 style={{ fontSize: 20, marginBottom: 4 }}>Out-of-Office Request</h1>
         <p style={{ color: '#666', fontSize: 13, marginTop: 0 }}>
-          Fill this out before you go. Your manager will get an email to approve.
+          Please complete this form before leaving the office. Your manager will be notified for approval.
         </p>
 
-        <label style={label}>Your name</label>
+        <label style={label}>Employee Name</label>
         <select required value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} style={input}>
           <option value="" disabled>Select your name</option>
           {employees.map((emp) => (
@@ -81,13 +81,13 @@ export default function Home() {
           ))}
         </select>
 
-        <label style={label}>Leaving at</label>
+        <label style={label}>Departure Time</label>
         <input required type="datetime-local" value={leaveTime} onChange={(e) => setLeaveTime(e.target.value)} style={input} />
 
-        <label style={label}>Expected back by</label>
+        <label style={label}>Expected Return Time</label>
         <input required type="datetime-local" value={expectedReturnTime} onChange={(e) => setExpectedReturnTime(e.target.value)} style={input} />
 
-        <label style={label}>Where are you going / why? (2-3 sentences)</label>
+        <label style={label}>Reason for Leaving (2&ndash;3 sentences)</label>
         <textarea
           required
           maxLength={500}
@@ -95,13 +95,13 @@ export default function Home() {
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           style={{ ...input, resize: 'vertical' }}
-          placeholder="e.g. Heading to the bank to sort out a company account issue, back after lunch."
+          placeholder="e.g. Visiting the bank to resolve a company account issue. Expected to return after lunch."
         />
 
         {error && <p style={{ color: '#c0392b', fontSize: 13 }}>{error}</p>}
 
         <button type="submit" disabled={status === 'submitting'} style={button}>
-          {status === 'submitting' ? 'Sending...' : 'Submit for approval'}
+          {status === 'submitting' ? 'Submitting...' : 'Submit for Approval'}
         </button>
       </form>
     </main>
