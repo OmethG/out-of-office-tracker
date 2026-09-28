@@ -12,9 +12,16 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
 
-  const { employeeName, leaveTime, expectedReturnTime, reason } = body || {};
+  // The name comes from the login (set by proxy.js), never from the form,
+  // so nobody can submit a request under someone else's name.
+  const employeeName = req.headers.get('x-employee-name');
+  if (!employeeName) {
+    return NextResponse.json({ error: 'Please log in first.' }, { status: 401 });
+  }
 
-  if (!employeeName || !leaveTime || !expectedReturnTime || !reason) {
+  const { leaveTime, expectedReturnTime, reason } = body || {};
+
+  if (!leaveTime || !expectedReturnTime || !reason) {
     return NextResponse.json({ error: 'Please fill in every field.' }, { status: 400 });
   }
   if (typeof reason !== 'string' || reason.trim().length === 0) {
@@ -29,7 +36,7 @@ export async function POST(req) {
 
   const employee = findEmployee(employeeName);
   if (!employee) {
-    return NextResponse.json({ error: 'Unknown employee. Please pick your name from the list.' }, { status: 400 });
+    return NextResponse.json({ error: 'Employee not recognised.' }, { status: 400 });
   }
 
   const token = crypto.randomBytes(24).toString('hex');
