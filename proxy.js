@@ -1,65 +1,43 @@
 import { NextResponse } from 'next/server';
-import { findEmployeeByLogin } from './lib/employees';
+import { SESSION_COOKIE, readSession } from './lib/session';
 
-function readBasicAuth(req) {
-  const auth = req.headers.get('authorization');
-  if (!auth) return null;
-  const [scheme, encoded] = auth.split(' ');
-  if (scheme !== 'Basic' || !encoded) return null;
-  let decoded = '';
-  try {
-    decoded = atob(encoded);
-  } catch {
-    return null;
-  }
-  const i = decoded.indexOf(':');
-  if (i === -1) return null;
-  return { username: decoded.slice(0, i), password: decoded.slice(i + 1) };
-}
+const STAFF_PATHS = ['/step-out', '/leave', '/requests', '/api/requests', '/api/leave'];
+const isUnder = (pathname, base) => pathname === base || pathname.startsWith(base + '/');
 
-function askForLogin(realm) {
-  return new NextResponse('Login required.', {
-    status: 401,
-    headers: { 'WWW-Authenticate': `Basic realm="${realm}"` },
-  });
-}
-
-export function proxy(req) {
+export async function proxy(req) {
   const { pathname } = req.nextUrl;
-  const creds = readBasicAuth(req);
+  const isApi = pathname.startsWith('/api/');
+  const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value);
+  const home = session?.role === 'manager' ? '/manager' : '/';
 
-  // Manager-only: the requests history page, CSV export, and delete.
-  const isManagerArea =
-    pathname === '/requests' ||
-    pathname.startsWith('/requests/') ||
-    pathname.startsWith('/api/requests/');
-
-  if (isManagerArea) {
-    const username = process.env.MANAGER_USERNAME;
-    const password = process.env.MANAGER_PASSWORD;
-    if (!username || !password) {
-      return new NextResponse(
-        'Manager login is not configured. Set MANAGER_USERNAME and MANAGER_PASSWORD.',
-        { status: 500 }
-      );
-    }
-    if (creds && creds.username === username && creds.password === password) {
-      return NextResponse.next();
-    }
-    return askForLogin('Manager area');
+  // Open to everyone: the sign-in page, and the Approve/Decline links in manager emails.
+  if (pathname === '/login') {
+    return session ? NextResponse.redirect(new URL(home, req.url)) : NextResponse.next();
+  }
+  if (pathname === '/api/login' || pathname === '/api/logout' || isUnder(pathname, '/api/decision')) {
+    return NextResponse.next();
   }
 
-  // Staff: the request form and submitting it. Each person logs in as themselves,
-  // and the server attaches their name to the request so nobody can submit as someone else.
-  const employee = creds && findEmployeeByLogin(creds.username, creds.password);
-  if (!employee) {
-    return askForLogin('Staff area');
+  if (!session) {
+    if (isApi) return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 });
+    return NextResponse.redirect(new URL('/login', req.url));
   }
-  const headers = new Headers(req.headers);
-  headers.set('x-employee-name', employee.name);
-  return NextResponse.next({ request: { headers } });
+
+  const managerArea = isUnder(pathname, '/manager') || isUnder(pathname, '/api/manager');
+  const staffArea = STAFF_PATHS.some((p) => isUnder(pathname, p));
+
+  if ((managerArea && session.role !== 'manager') || (staffArea && session.role !== 'staff')) {
+    if (isApi) return NextResponse.json({ error: "You don't have access to that." }, { status: 403 });
+    return NextResponse.redirect(new URL(home, req.url));
+  }
+  if (pathname === '/' && session.role === 'manager') {
+    return NextResponse.redirect(new URL('/manager', req.url));
+  }
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/api/requests', '/requests', '/requests/:path*', '/api/requests/:path+'],
+  matcher: [
+    '/((?!_next/|icons/|brand/|manifest.webmanifest|icon.png|apple-icon.png|favicon.ico|robots.txt).*)',
+  ],
 };

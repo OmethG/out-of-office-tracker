@@ -1,69 +1,58 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { getSession } from '../../../lib/auth';
 import { query } from '../../../lib/db';
-import { findEmployee } from '../../../lib/employees';
 import { sendManagerApprovalEmail } from '../../../lib/email';
+import { describe } from '../../../lib/requests';
 
+// Staff: send a step-out request. The name always comes from the sign-in, never from the form.
 export async function POST(req) {
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  const session = await getSession();
+  if (!session || session.role !== 'staff') {
+    return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 });
   }
 
-  // The name comes from the login (set by proxy.js), never from the form,
-  // so nobody can submit a request under someone else's name.
-  const employeeName = req.headers.get('x-employee-name');
-  if (!employeeName) {
-    return NextResponse.json({ error: 'Please log in first.' }, { status: 401 });
-  }
-
-  const { leaveTime, expectedReturnTime, reason } = body || {};
+  const body = await req.json().catch(() => null);
+  const { leaveTime, expectedReturnTime } = body || {};
+  const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
 
   if (!leaveTime || !expectedReturnTime || !reason) {
     return NextResponse.json({ error: 'Please fill in every field.' }, { status: 400 });
   }
-  if (typeof reason !== 'string' || reason.trim().length === 0) {
-    return NextResponse.json({ error: 'Please add a short reason.' }, { status: 400 });
-  }
   if (reason.length > 500) {
-    return NextResponse.json({ error: 'Reason is too long (max 500 characters).' }, { status: 400 });
+    return NextResponse.json({ error: 'Keep the reason under 500 characters.' }, { status: 400 });
   }
-  if (isNaN(Date.parse(leaveTime)) || isNaN(Date.parse(expectedReturnTime))) {
-    return NextResponse.json({ error: 'Invalid date/time.' }, { status: 400 });
+  const start = new Date(leaveTime);
+  const end = new Date(expectedReturnTime);
+  if (isNaN(start) || isNaN(end)) {
+    return NextResponse.json({ error: 'Check the times and try again.' }, { status: 400 });
   }
-
-  const employee = findEmployee(employeeName);
-  if (!employee) {
-    return NextResponse.json({ error: 'Employee not recognised.' }, { status: 400 });
+  if (end <= start) {
+    return NextResponse.json({ error: '"Back by" needs to be after "Leaving at".' }, { status: 400 });
   }
 
   const token = crypto.randomBytes(24).toString('hex');
-
-  const result = await query(
+  const { rows } = await query(
     `INSERT INTO leave_requests
-      (employee_name, employee_email, leave_time, expected_return_time, reason, decision_token)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id`,
-    [employeeName, employee.email || null, leaveTime, expectedReturnTime, reason.trim(), token]
+      (kind, employee_name, employee_email, leave_time, expected_return_time, reason, decision_token)
+     VALUES ('step_out', $1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [session.name, session.email, start.toISOString(), end.toISOString(), reason, token]
   );
+  const row = rows[0];
+  const d = describe(row);
 
   try {
-    await sendManagerApprovalEmail({
-      token,
-      employeeName,
-      leaveTime,
-      expectedReturnTime,
-      reason: reason.trim(),
-    });
+    await sendManagerApprovalEmail(row);
   } catch (err) {
     console.error('Failed to email manager', err);
-    return NextResponse.json(
-      { ok: true, id: result.rows[0].id, warning: 'Saved, but the manager email failed to send. Please let them know directly.' },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      ok: true,
+      id: row.id,
+      title: d.title,
+      when: d.when,
+      warning: "Saved, but the email to your manager didn't send. Please let them know directly.",
+    });
   }
-
-  return NextResponse.json({ ok: true, id: result.rows[0].id });
+  return NextResponse.json({ ok: true, id: row.id, title: d.title, when: d.when });
 }
