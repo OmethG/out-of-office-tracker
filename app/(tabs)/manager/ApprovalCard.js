@@ -42,6 +42,7 @@ export default function ApprovalCard({ item }) {
       </div>
       <div className="when">{item.when}</div>
       <p>{item.reason}</p>
+      {item.balance && <span className={`use ${item.balance.tone}`}>{item.balance.text}</span>}
       <div className="meta">Requested {item.requestedAt}</div>
       {error && <div className="error" role="alert">{error}</div>}
       {result ? (

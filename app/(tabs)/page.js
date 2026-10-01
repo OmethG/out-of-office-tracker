@@ -4,16 +4,19 @@ import { query } from '../../lib/db';
 import { toClient } from '../../lib/requests';
 import { dayLabel } from '../../lib/time';
 import { RequestRow } from '../components/Chrome';
+import { LeavesLeftCard } from '../components/LeaveSummary';
+import { balanceFor, leaveYear } from '../../lib/leave';
 import { CalendarIcon, DoorIcon } from '../components/Icons';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const session = await requireSession('staff');
-  const { rows } = await query(
-    'SELECT * FROM leave_requests WHERE employee_name = $1 ORDER BY created_at DESC LIMIT 4',
-    [session.name]
-  );
+  const year = leaveYear();
+  const [{ rows }, balance] = await Promise.all([
+    query('SELECT * FROM leave_requests WHERE employee_name = $1 ORDER BY created_at DESC LIMIT 4', [session.name]),
+    balanceFor(session.name, year),
+  ]);
   const items = rows.map((r) => toClient(r, { relative: true }));
 
   return (
@@ -31,9 +34,11 @@ export default async function Home() {
           </Link>
           <Link href="/leave" className="tile lv">
             <span className="ic"><CalendarIcon /></span>
-            <span><b>Request leave</b><small>Full day or half day</small></span>
+            <span><b>Request leave</b><small>Full, half or short</small></span>
           </Link>
         </div>
+
+        <LeavesLeftCard balance={balance} year={year} />
 
         <div className="sechead">
           Your requests

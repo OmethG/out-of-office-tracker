@@ -3,6 +3,7 @@ import { requireSession } from '../../../lib/auth';
 import { query } from '../../../lib/db';
 import { toClient } from '../../../lib/requests';
 import ApprovalCard from './ApprovalCard';
+import { balanceLinesFor } from '../../../lib/leave';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Approvals · MethG Staff' };
@@ -19,7 +20,8 @@ export default async function Approvals({ searchParams }) {
   const type = FILTERS.some((f) => f.key === sp?.type) ? sp.type : 'all';
 
   const { rows } = await query("SELECT * FROM leave_requests WHERE status = 'pending' ORDER BY leave_time ASC");
-  const all = rows.map((r) => toClient(r, { relative: true }));
+  const lines = await balanceLinesFor(rows);
+  const all = rows.map((r) => ({ ...toClient(r, { relative: true }), balance: lines[r.id] || null }));
   const items = type === 'all' ? all : all.filter((i) => i.kind === type);
 
   return (

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HomeIcon, InboxIcon, ListIcon, UserIcon } from './Icons';
+import { HomeIcon, InboxIcon, ListIcon, PeopleIcon, UserIcon } from './Icons';
 
 const STAFF = [
   { href: '/', label: 'Home', Icon: HomeIcon },
@@ -12,6 +12,7 @@ const STAFF = [
 const MANAGER = [
   { href: '/manager', label: 'Approvals', Icon: InboxIcon },
   { href: '/manager/history', label: 'History', Icon: ListIcon },
+  { href: '/manager/staff', label: 'Staff', Icon: PeopleIcon },
   { href: '/account', label: 'Account', Icon: UserIcon },
 ];
 
@@ -20,13 +21,16 @@ export default function TabBar({ role }) {
   const tabs = role === 'manager' ? MANAGER : STAFF;
   return (
     <div className="tabbar">
-      <nav aria-label="Main">
-        {tabs.map(({ href, label, Icon }) => (
-          <Link key={href} href={href} className={path === href ? 'on' : ''} aria-current={path === href ? 'page' : undefined}>
+      <nav aria-label="Main" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+        {tabs.map(({ href, label, Icon }) => {
+          const on = path === href || (href === '/manager/staff' && path.startsWith('/manager/staff/'));
+          return (
+          <Link key={href} href={href} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined}>
             <Icon />
             {label}
           </Link>
-        ))}
+          );
+        })}
       </nav>
     </div>
   );

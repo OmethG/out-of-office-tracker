@@ -29,6 +29,7 @@ export default function HistoryItem({ item }) {
         <b>{item.name} · {item.title}</b>
         <span className={`pill ${item.status}`}>{item.statusLabel}</span>
         <small>{item.when}</small>
+        {item.back && <span className={`backat ${item.back.tone}`}>{item.back.label}</span>}
       </summary>
       <div className="more">
         <p>{item.reason}</p>

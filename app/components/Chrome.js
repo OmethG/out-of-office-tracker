@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import ThemeToggle from './ThemeToggle';
 import TabBar from './TabBar';
+import CheckIn from './CheckIn';
 import { BackIcon } from './Icons';
 
 export function TopBar({ session }) {
@@ -35,6 +36,7 @@ export function RequestRow({ item, showReason = false, showName = false }) {
       <span className={`pill ${item.status}`}>{item.statusLabel}</span>
       <small>{item.when}</small>
       {showReason && <span className="reason">{item.reason}</span>}
+      {item.timed && <CheckIn item={item} />}
     </div>
   );
 }

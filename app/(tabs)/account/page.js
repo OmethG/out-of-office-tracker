@@ -1,6 +1,8 @@
 import { requireSession } from '../../../lib/auth';
 import ThemeToggle from '../../components/ThemeToggle';
 import SignOut from './SignOut';
+import { LeaveBreakdown, LeaveTaken } from '../../components/LeaveSummary';
+import { balanceFor, leaveTaken, leaveYear } from '../../../lib/leave';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Account · MethG Staff' };
@@ -8,6 +10,10 @@ export const metadata = { title: 'Account · MethG Staff' };
 export default async function AccountPage() {
   const session = await requireSession();
   const manager = session.role === 'manager';
+  const year = leaveYear();
+  const [balance, taken] = manager
+    ? [null, null]
+    : await Promise.all([balanceFor(session.name, year), leaveTaken(session.name, year)]);
 
   return (
     <>
@@ -23,6 +29,13 @@ export default async function AccountPage() {
             </span>
           </div>
         </div>
+
+        {!manager && (
+          <>
+            <LeaveBreakdown balance={balance} year={year} />
+            <LeaveTaken rows={taken} />
+          </>
+        )}
 
         <div className="card">
           <h2>Appearance</h2>

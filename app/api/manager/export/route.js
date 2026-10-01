@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { getSession } from '../../../../lib/auth';
 import { query } from '../../../../lib/db';
 import { describe, statusLabel } from '../../../../lib/requests';
+import { checkInStatus, isTimed, returnLabel } from '../../../../lib/checkin';
 import { TZ, addDays, atLocal, isYmd } from '../../../../lib/time';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,17 @@ function localCell(date) {
     timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).formatToParts(new Date(date))) p[x.type] = Number(x.value);
   return new Date(Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute));
+}
+
+// "On time", "1 hr late", "40 min early", "No check-in", or blank (leave, declined, older requests).
+function returnText(r) {
+  if (!isTimed(r)) return null;
+  if (r.returned_at) {
+    const t = returnLabel(r.returned_at, r.expected_return_time);
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  const s = checkInStatus(r);
+  return s ? s.short : null;
 }
 
 function fileName(from, to) {
@@ -54,10 +66,13 @@ export async function GET(req) {
   ws.columns = [
     { header: 'Employee', key: 'name', width: 16 },
     { header: 'Type', key: 'type', width: 11 },
+    { header: 'Leave type', key: 'leaveType', width: 13 },
     { header: 'Details', key: 'details', width: 20 },
     { header: 'When', key: 'when', width: 34 },
     { header: 'From', key: 'from', width: 26, style: { numFmt: dt } },
     { header: 'To', key: 'to', width: 26, style: { numFmt: dt } },
+    { header: 'Back at', key: 'back', width: 26, style: { numFmt: dt } },
+    { header: 'Return', key: 'ret', width: 15 },
     { header: 'Days', key: 'days', width: 7, style: { alignment: { horizontal: 'center' } } },
     { header: 'Reason', key: 'reason', width: 50, style: { alignment: { wrapText: true, vertical: 'top' } } },
     { header: 'Status', key: 'status', width: 11 },
@@ -67,14 +82,18 @@ export async function GET(req) {
 
   for (const r of rows) {
     const d = describe(r);
+    const ret = returnText(r);
     const row = ws.addRow({
       name: r.employee_name,
       type: d.typeLabel,
+      leaveType: d.leaveLabel || null,
       details: d.detailLabel,
       when: d.when,
       from: localCell(r.leave_time),
       to: localCell(r.expected_return_time),
-      days: r.kind === 'leave' ? Number(r.days) : null,
+      back: localCell(r.returned_at),
+      ret,
+      days: r.kind === 'leave' && r.days != null ? Number(r.days) : null,
       reason: r.reason,
       status: statusLabel(r.status),
       requested: localCell(r.created_at),
@@ -84,6 +103,9 @@ export async function GET(req) {
     row.getCell('reason').alignment = { wrapText: true, vertical: 'top' };
     row.getCell('days').alignment = { horizontal: 'center', vertical: 'top' };
     row.getCell('type').font = { name: 'Calibri', size: 11, color: { argb: r.kind === 'leave' ? PURPLE : BLUE }, bold: true };
+    if (ret) {
+      row.getCell('ret').font = { name: 'Calibri', size: 11, bold: true, color: { argb: r.returned_at ? STATUS_COLOR.approved : STATUS_COLOR.declined } };
+    }
     row.getCell('status').font = { name: 'Calibri', size: 11, color: { argb: STATUS_COLOR[r.status] || STATUS_COLOR.pending }, bold: true };
   }
 
@@ -92,9 +114,9 @@ export async function GET(req) {
   header.eachCell((cell) => {
     cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
-    cell.alignment = { vertical: 'middle', horizontal: cell.col === 7 ? 'center' : 'left' };
+    cell.alignment = { vertical: 'middle', horizontal: cell.col === 10 ? 'center' : 'left' };
   });
-  ws.autoFilter = { from: 'A1', to: 'K1' };
+  ws.autoFilter = { from: 'A1', to: 'N1' };
   ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' };
 
   const buffer = await wb.xlsx.writeBuffer();

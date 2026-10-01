@@ -21,6 +21,9 @@ export const ListIcon = () => (
 export const UserIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><circle {...s} cx="12" cy="8.5" r="3.8" /><path {...s} d="M4.5 20c1.2-3.6 4-5.3 7.5-5.3s6.3 1.7 7.5 5.3" /></svg>
 );
+export const PeopleIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true"><circle {...s} cx="9" cy="8.5" r="3.3" /><path {...s} d="M3 19.5c.9-3.2 3.2-4.8 6-4.8s5.1 1.6 6 4.8" /><path {...s} d="M15.5 5.6a3.2 3.2 0 0 1 0 6M17.5 14.9c1.8.6 3 2.1 3.5 4.6" /></svg>
+);
 export const InboxIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><path {...s} d="M4 13l2.5-7.5h11L20 13v5.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z" /><path {...s} d="M4 13h4.5l1.5 2.5h4l1.5-2.5H20" /></svg>
 );
