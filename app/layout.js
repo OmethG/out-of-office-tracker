@@ -1,4 +1,26 @@
+import localFont from 'next/font/local';
 import './globals.css';
+
+// Fonts are served from this site (no trip to Google), and preloaded.
+const sans = localFont({
+  src: [
+    { path: './fonts/source-sans-3-latin-400-normal.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/source-sans-3-latin-600-normal.woff2', weight: '600', style: 'normal' },
+    { path: './fonts/source-sans-3-latin-700-normal.woff2', weight: '700', style: 'normal' },
+    { path: './fonts/source-sans-3-latin-800-normal.woff2', weight: '800', style: 'normal' },
+  ],
+  variable: '--font-sans',
+  display: 'swap',
+});
+const mono = localFont({
+  src: [
+    { path: './fonts/ibm-plex-mono-latin-400-normal.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/ibm-plex-mono-latin-500-normal.woff2', weight: '500', style: 'normal' },
+  ],
+  variable: '--font-mono',
+  display: 'swap',
+  preload: false,
+});
 
 export const metadata = {
   title: 'MethG Staff',
@@ -19,15 +41,9 @@ const themeScript = `try{if(localStorage.getItem('methg-theme')==='dark'){docume
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" data-theme="light" suppressHydrationWarning>
+    <html lang="en" data-theme="light" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
-        />
       </head>
       <body>
         <div className="shell">{children}</div>

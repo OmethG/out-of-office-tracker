@@ -1,7 +1,7 @@
-import { requireSession } from '../../lib/auth';
-import { query } from '../../lib/db';
-import { toClient } from '../../lib/requests';
-import { TopBar, TabBar, RequestRow } from '../components/Chrome';
+import { requireSession } from '../../../lib/auth';
+import { query } from '../../../lib/db';
+import { toClient } from '../../../lib/requests';
+import { RequestRow } from '../../components/Chrome';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Your requests · MethG Staff' };
@@ -16,7 +16,6 @@ export default async function MyRequests() {
 
   return (
     <>
-      <TopBar session={session} />
       <main className="page">
         <div className="hello"><h1>Your requests</h1></div>
         {items.length === 0 ? (
@@ -27,7 +26,6 @@ export default async function MyRequests() {
           </div>
         )}
       </main>
-      <TabBar role="staff" />
     </>
   );
 }

@@ -1,6 +1,5 @@
-import { requireSession } from '../../lib/auth';
-import { TopBar, TabBar } from '../components/Chrome';
-import ThemeToggle from '../components/ThemeToggle';
+import { requireSession } from '../../../lib/auth';
+import ThemeToggle from '../../components/ThemeToggle';
 import SignOut from './SignOut';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +11,6 @@ export default async function AccountPage() {
 
   return (
     <>
-      <TopBar session={session} />
       <main className="page">
         <div className="hello"><h1>Account</h1></div>
 
@@ -42,7 +40,6 @@ export default async function AccountPage() {
 
         <SignOut />
       </main>
-      <TabBar role={session.role} />
     </>
   );
 }

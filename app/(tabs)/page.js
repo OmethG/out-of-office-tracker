@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import { requireSession } from '../lib/auth';
-import { query } from '../lib/db';
-import { toClient } from '../lib/requests';
-import { dayLabel } from '../lib/time';
-import { TopBar, TabBar, RequestRow } from './components/Chrome';
-import { CalendarIcon, DoorIcon } from './components/Icons';
+import { requireSession } from '../../lib/auth';
+import { query } from '../../lib/db';
+import { toClient } from '../../lib/requests';
+import { dayLabel } from '../../lib/time';
+import { RequestRow } from '../components/Chrome';
+import { CalendarIcon, DoorIcon } from '../components/Icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,6 @@ export default async function Home() {
 
   return (
     <>
-      <TopBar session={session} />
       <main className="page">
         <div className="hello">
           <small>{dayLabel(new Date())}</small>
@@ -48,7 +47,6 @@ export default async function Home() {
           </div>
         )}
       </main>
-      <TabBar role="staff" />
     </>
   );
 }

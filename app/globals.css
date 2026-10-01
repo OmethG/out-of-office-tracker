@@ -35,8 +35,8 @@
   --scrim: rgba(12, 16, 40, 0.45);
   --shadow: 0 10px 30px -18px rgba(16, 20, 58, 0.35);
   --radius: 14px;
-  --f-body: "Source Sans 3", "Myriad Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --f-body: var(--font-sans), "Myriad Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
@@ -77,6 +77,8 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); }
+/* No double-tap-to-zoom delay, so taps register immediately on phones. */
+html { touch-action: manipulation; }
 body {
   font-family: var(--f-body);
   font-size: 16px;
@@ -265,3 +267,23 @@ details.hrow .more .meta { font-size: 13px; color: var(--muted); }
 .hint { color: var(--muted); font-size: 14px; text-align: center; margin: 0; }
 
 .theme-toggle { justify-self: start; }
+
+/* Tap feedback: everything you can press reacts straight away. */
+a, button, summary { transition: transform .08s ease, opacity .08s ease, background-color .12s ease; }
+.btn:active:not(:disabled), .acts button:active:not(:disabled), .xbtn:active, .chips a:active, .chips button:active,
+.iconbtn:active, .back:active, .avatar:active, .seg button:active, .half:active, .confirm button:active { transform: scale(.96); }
+.list a.row:active, details.hrow > summary:active, .sechead a:active { background: var(--bg); }
+.tabbar a:active { opacity: .55; }
+.month a:active { background: var(--bg); }
+
+/* Loading placeholders, shown the moment a tab or screen is tapped. */
+.sk { display: block; background: var(--line); border-radius: 12px; animation: sk-pulse 1.1s ease-in-out infinite; }
+@keyframes sk-pulse { 50% { opacity: .5; } }
+.sk-title { height: 34px; width: 55%; margin-top: 6px; }
+.sk-block { height: 112px; border-radius: 18px; }
+.sk-list { padding: 4px 0; }
+.sk-row { padding: 12px 14px; display: grid; gap: 7px; }
+.sk-line { height: 13px; width: 70%; border-radius: 6px; }
+.sk-line.short { width: 45%; }
+.sk-field { height: 46px; border-radius: var(--radius); }
+.sk-area { height: 96px; border-radius: var(--radius); }

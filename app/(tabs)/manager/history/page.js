@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { requireSession } from '../../../lib/auth';
-import { query } from '../../../lib/db';
-import { toClient } from '../../../lib/requests';
-import { atLocal, localDate, monthLabel, shiftMonth } from '../../../lib/time';
-import { TopBar, TabBar } from '../../components/Chrome';
-import { BackIcon, NextIcon } from '../../components/Icons';
+import { requireSession } from '../../../../lib/auth';
+import { query } from '../../../../lib/db';
+import { toClient } from '../../../../lib/requests';
+import { atLocal, localDate, monthLabel, shiftMonth } from '../../../../lib/time';
+import { BackIcon, NextIcon } from '../../../components/Icons';
 import HistoryItem from './HistoryItem';
 import ExportButton from './ExportButton';
 
@@ -40,7 +39,6 @@ export default async function History({ searchParams }) {
 
   return (
     <>
-      <TopBar session={session} />
       <main className="page">
         <div className="hello" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1 style={{ flex: 1 }}>History</h1>
@@ -68,7 +66,6 @@ export default async function History({ searchParams }) {
           </div>
         )}
       </main>
-      <TabBar role="manager" />
     </>
   );
 }

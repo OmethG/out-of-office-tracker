@@ -1,8 +1,7 @@
 import Link from 'next/link';
-import { requireSession } from '../../lib/auth';
-import { query } from '../../lib/db';
-import { toClient } from '../../lib/requests';
-import { TopBar, TabBar } from '../components/Chrome';
+import { requireSession } from '../../../lib/auth';
+import { query } from '../../../lib/db';
+import { toClient } from '../../../lib/requests';
 import ApprovalCard from './ApprovalCard';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +24,6 @@ export default async function Approvals({ searchParams }) {
 
   return (
     <>
-      <TopBar session={session} />
       <main className="page">
         <div className="hello" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1>Approvals</h1>
@@ -44,7 +42,6 @@ export default async function Approvals({ searchParams }) {
           items.map((it) => <ApprovalCard key={it.id} item={it} />)
         )}
       </main>
-      <TabBar role="manager" />
     </>
   );
 }

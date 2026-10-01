@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DownloadIcon } from '../../components/Icons';
+import { DownloadIcon } from '../../../components/Icons';
 
 function lastDay(ym) {
   const [y, m] = ym.split('-').map(Number);
