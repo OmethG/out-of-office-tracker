@@ -22,7 +22,7 @@ export default async function MyRequests() {
           <div className="empty">Nothing here yet. Your step-out and leave requests will show up here.</div>
         ) : (
           <div className="list">
-            {items.map((it) => <RequestRow key={it.id} item={it} showReason />)}
+            {items.map((it) => <RequestRow key={it.id} item={it} showReason showCancel />)}
           </div>
         )}
       </main>

@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 
 const BLUE = 'FF023ABE';
 const PURPLE = 'FF470073';
-const STATUS_COLOR = { approved: 'FF157347', declined: 'FFB42318', pending: 'FF9A5B00' };
+const STATUS_COLOR = { approved: 'FF157347', declined: 'FFB42318', pending: 'FF9A5B00', cancelled: 'FF6A6F8E' };
 
 // Excel has no timezones: give it the Sri Lanka wall-clock time so cells show what staff saw.
 function localCell(date) {

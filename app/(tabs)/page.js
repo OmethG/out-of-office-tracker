@@ -5,6 +5,8 @@ import { toClient } from '../../lib/requests';
 import { dayLabel } from '../../lib/time';
 import { RequestRow } from '../components/Chrome';
 import { LeavesLeftCard } from '../components/LeaveSummary';
+import { OutToday } from '../components/OutList';
+import { whoIsOut } from '../../lib/out';
 import { balanceFor, leaveYear } from '../../lib/leave';
 import { CalendarIcon, DoorIcon } from '../components/Icons';
 
@@ -13,9 +15,10 @@ export const dynamic = 'force-dynamic';
 export default async function Home() {
   const session = await requireSession('staff');
   const year = leaveYear();
-  const [{ rows }, balance] = await Promise.all([
+  const [{ rows }, balance, [today]] = await Promise.all([
     query('SELECT * FROM leave_requests WHERE employee_name = $1 ORDER BY created_at DESC LIMIT 4', [session.name]),
     balanceFor(session.name, year),
+    whoIsOut({ days: 1 }),
   ]);
   const items = rows.map((r) => toClient(r, { relative: true }));
 
@@ -37,6 +40,8 @@ export default async function Home() {
             <span><b>Request leave</b><small>Full, half or short</small></span>
           </Link>
         </div>
+
+        <OutToday day={today} />
 
         <LeavesLeftCard balance={balance} year={year} />
 

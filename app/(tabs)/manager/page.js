@@ -4,6 +4,8 @@ import { query } from '../../../lib/db';
 import { toClient } from '../../../lib/requests';
 import ApprovalCard from './ApprovalCard';
 import { balanceLinesFor } from '../../../lib/leave';
+import { OutToday } from '../../components/OutList';
+import { whoIsOut } from '../../../lib/out';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Approvals · MethG Staff' };
@@ -20,7 +22,7 @@ export default async function Approvals({ searchParams }) {
   const type = FILTERS.some((f) => f.key === sp?.type) ? sp.type : 'all';
 
   const { rows } = await query("SELECT * FROM leave_requests WHERE status = 'pending' ORDER BY leave_time ASC");
-  const lines = await balanceLinesFor(rows);
+  const [lines, [today]] = await Promise.all([balanceLinesFor(rows), whoIsOut({ days: 1, manager: true })]);
   const all = rows.map((r) => ({ ...toClient(r, { relative: true }), balance: lines[r.id] || null }));
   const items = type === 'all' ? all : all.filter((i) => i.kind === type);
 
@@ -31,6 +33,8 @@ export default async function Approvals({ searchParams }) {
           <h1>Approvals</h1>
           {all.length > 0 && <span className="badge">{all.length} waiting</span>}
         </div>
+        <OutToday day={today} />
+        <div className="sechead">Waiting for you</div>
         <div className="chips">
           {FILTERS.map((f) => (
             <Link key={f.key} href={f.key === 'all' ? '/manager' : `/manager?type=${f.key}`} className={type === f.key ? 'on' : ''}>

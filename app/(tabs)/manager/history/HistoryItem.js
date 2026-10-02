@@ -23,7 +23,7 @@ export default function HistoryItem({ item }) {
   }
 
   return (
-    <details className="hrow">
+    <details className={`hrow ${item.status === 'cancelled' ? 'gone' : ''}`}>
       <summary className="row">
         <i className={`tm ${item.kind === 'leave' ? 'lv' : 'so'}`} aria-hidden="true" />
         <b>{item.name} · {item.title}</b>
@@ -35,7 +35,9 @@ export default function HistoryItem({ item }) {
         <p>{item.reason}</p>
         <span className="meta">
           Requested {item.requestedAt}
-          {item.decidedAt ? ` · ${item.statusLabel} ${item.decidedAt}` : ''}
+          {item.status === 'cancelled'
+            ? ` · Cancelled by ${item.name}${item.cancelledAt ? ` ${item.cancelledAt}` : ''}`
+            : item.decidedAt ? ` · ${item.statusLabel} ${item.decidedAt}` : ''}
         </span>
         {error && <div className="error" role="alert">{error}</div>}
         {confirming ? (

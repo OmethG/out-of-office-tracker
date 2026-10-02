@@ -2,6 +2,7 @@ import Link from 'next/link';
 import ThemeToggle from './ThemeToggle';
 import TabBar from './TabBar';
 import CheckIn from './CheckIn';
+import CancelRequest from './CancelRequest';
 import { BackIcon } from './Icons';
 
 export function TopBar({ session }) {
@@ -28,15 +29,16 @@ export function TitleBar({ title, back = '/' }) {
   );
 }
 
-export function RequestRow({ item, showReason = false, showName = false }) {
+export function RequestRow({ item, showReason = false, showName = false, showCancel = false }) {
   return (
-    <div className="row">
+    <div className={`row ${item.status === 'cancelled' ? 'gone' : ''}`}>
       <i className={`tm ${item.kind === 'leave' ? 'lv' : 'so'}`} aria-hidden="true" />
       <b>{showName ? `${item.name} · ${item.title}` : item.title}</b>
       <span className={`pill ${item.status}`}>{item.statusLabel}</span>
       <small>{item.when}</small>
       {showReason && <span className="reason">{item.reason}</span>}
       {item.timed && <CheckIn item={item} />}
+      {showCancel && item.canCancel && <CancelRequest item={item} />}
     </div>
   );
 }

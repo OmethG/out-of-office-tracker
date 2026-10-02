@@ -43,6 +43,9 @@ export async function GET(req) {
   const d = describe(row);
   const summary = `<p><b>${esc(row.employee_name)}</b> · ${esc(d.title)}</p><p>${esc(d.when)}</p>`;
 
+  if (!changed && row.status === 'cancelled') {
+    return page('This request was cancelled', `${summary}<p>${esc(row.employee_name)} cancelled it, so there is nothing to decide.</p>`, '#6a6f8e');
+  }
   if (!changed) {
     return page(`Already ${row.status}`, `${summary}<p>Nothing was changed.</p>`, '#6a6f8e');
   }
