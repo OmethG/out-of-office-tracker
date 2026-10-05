@@ -40,6 +40,7 @@ export default function ApprovalCard({ item }) {
         <span className={`av ${leave ? 'lv' : ''}`}>{item.name.charAt(0).toUpperCase()}</span>
         <b>{item.name}</b>
         <span className="kind">{item.title}</span>
+        {item.medical && <span className="medtag">Medical</span>}
       </div>
       <div className="when">{item.when}</div>
       <p>{item.reason}</p>
@@ -50,6 +51,7 @@ export default function ApprovalCard({ item }) {
           <em>View ›</em>
         </Link>
       )}
+      {item.medicalNote && <span className="use none">{item.medicalNote}</span>}
       {item.balance && <span className={`use ${item.balance.tone}`}>{item.balance.text}</span>}
       <div className="meta">Requested {item.requestedAt}</div>
       {error && <div className="error" role="alert">{error}</div>}

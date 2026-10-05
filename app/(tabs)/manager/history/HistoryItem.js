@@ -33,7 +33,7 @@ export default function HistoryItem({ item }) {
         {item.back && <span className={`backat ${item.back.tone}`}>{item.back.label}</span>}
       </summary>
       <div className="more">
-        <p>{item.reason}</p>
+        <p>{item.medical && <span className="medtag">Medical</span>} {item.reason}</p>
         {item.certificate && <Link href={`/certificate/${item.id}`} className="linkbtn cert">View medical certificate ›</Link>}
         <span className="meta">
           Requested {item.requestedAt}

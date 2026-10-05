@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { describe } from '../../lib/requests';
-import { CATEGORY_LABEL, categoryOf, fmtDays } from '../../lib/leaveRules';
+import { CATEGORY_LABEL, FREE_MEDICAL, categoryOf, fmtDays } from '../../lib/leaveRules';
 
 // Small card on staff Home: annual, casual and total days left this leave year.
 export function LeavesLeftCard({ balance, year }) {
@@ -43,7 +43,8 @@ function Meter({ label, b }) {
 
 // Full breakdown, used on the staff Account tab and the manager's Staff page.
 export function LeaveBreakdown({ balance, year, title = 'Your leave' }) {
-  const waiting = ['annual', 'casual', 'medical'].filter((c) => balance[c].pending > 0);
+  const waiting = ['annual', 'casual'].filter((c) => balance[c].pending > 0);
+  const med = balance.medicalCount;
   const pendingTotal = waiting.reduce((n, c) => n + balance[c].pending, 0);
   const waitingText = `${waiting.map((c) => `${fmtDays(balance[c].pending)} ${c}`).join(' and ')} ${pendingTotal <= 1 ? 'day' : 'days'}`;
   return (
@@ -58,11 +59,13 @@ export function LeaveBreakdown({ balance, year, title = 'Your leave' }) {
       </div>
       <Meter label="Annual" b={balance.annual} />
       <Meter label="Casual" b={balance.casual} />
-      <div className="meter">
-        <div className="top">
-          <b>Medical</b>
-          <span><b className="plain">{fmtDays(balance.medical.used)} taken</b> · no limit</span>
-        </div>
+      <div className={`medline ${med >= FREE_MEDICAL ? 'out' : ''}`}>
+        <b>{med === 0 ? 'No medical leave' : `${med} medical ${med === 1 ? 'leave' : 'leaves'}`}</b>
+        <span>
+          {med >= FREE_MEDICAL
+            ? 'A certificate is needed for medical leave from now on.'
+            : `Counted inside casual. ${FREE_MEDICAL - med} more without a certificate.`}
+        </span>
       </div>
       <span className="mini">
         {waiting.length > 0 && (
@@ -92,6 +95,7 @@ export function LeaveTaken({ rows }) {
                 <span>{cat === 'short' ? d.when : when}</span>
                 <small>
                   {cat === 'short' ? 'Short leave' : `${CATEGORY_LABEL[cat]} · ${d.detailLabel.startsWith('Half') ? 'Half day' : 'Full day'}`}
+                  {r.medical && ' · Medical'}
                   {r.certificate_name && <> · <Link href={`/certificate/${r.id}`}>Certificate</Link></>}
                 </small>
                 <em>{cat === 'short' ? d.detailLabel : fmtDays(r.days)}</em>

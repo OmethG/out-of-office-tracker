@@ -14,7 +14,7 @@ export default async function LeavePage() {
     <>
       <TitleBar title="Request leave" />
       <main className="page bare">
-        <LeaveForm today={localDate()} balance={{ annual: balance.annual, casual: balance.casual, medical: balance.medical }} />
+        <LeaveForm today={localDate()} balance={{ annual: balance.annual, casual: balance.casual }} medicalCount={balance.medicalCount} />
       </main>
     </>
   );

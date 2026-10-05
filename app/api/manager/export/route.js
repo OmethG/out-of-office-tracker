@@ -78,6 +78,7 @@ export async function GET(req) {
     { header: 'Status', key: 'status', width: 11 },
     { header: 'Requested at', key: 'requested', width: 26, style: { numFmt: dt } },
     { header: 'Decided at', key: 'decided', width: 26, style: { numFmt: dt } },
+    { header: 'Medical', key: 'medical', width: 10 },
     { header: 'Certificate', key: 'cert', width: 12 },
   ];
 
@@ -99,7 +100,8 @@ export async function GET(req) {
       status: statusLabel(r.status),
       requested: localCell(r.created_at),
       decided: localCell(r.decided_at),
-      cert: r.leave_category === 'medical' ? (r.certificate_name ? 'Yes' : 'No') : null,
+      medical: r.medical ? 'Yes' : null,
+      cert: r.certificate_name ? 'Yes' : null,
     });
     row.alignment = { vertical: 'top' };
     row.getCell('reason').alignment = { wrapText: true, vertical: 'top' };
@@ -118,7 +120,7 @@ export async function GET(req) {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
     cell.alignment = { vertical: 'middle', horizontal: cell.col === 10 ? 'center' : 'left' };
   });
-  ws.autoFilter = { from: 'A1', to: 'O1' };
+  ws.autoFilter = { from: 'A1', to: 'P1' };
   ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' };
 
   const buffer = await wb.xlsx.writeBuffer();

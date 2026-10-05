@@ -3,7 +3,7 @@ import { requireSession } from '../../../lib/auth';
 import { query } from '../../../lib/db';
 import { toClient } from '../../../lib/requests';
 import ApprovalCard from './ApprovalCard';
-import { balanceLinesFor } from '../../../lib/leave';
+import { balanceLinesFor, medicalLine, medicalNumbersFor } from '../../../lib/leave';
 import { OutToday } from '../../components/OutList';
 import { whoIsOut } from '../../../lib/out';
 
@@ -22,8 +22,16 @@ export default async function Approvals({ searchParams }) {
   const type = FILTERS.some((f) => f.key === sp?.type) ? sp.type : 'all';
 
   const { rows } = await query("SELECT * FROM leave_requests WHERE status = 'pending' ORDER BY leave_time ASC");
-  const [lines, [today]] = await Promise.all([balanceLinesFor(rows), whoIsOut({ days: 1, manager: true })]);
-  const all = rows.map((r) => ({ ...toClient(r, { relative: true }), balance: lines[r.id] || null }));
+  const [lines, medNumbers, [today]] = await Promise.all([
+    balanceLinesFor(rows),
+    medicalNumbersFor(rows),
+    whoIsOut({ days: 1, manager: true }),
+  ]);
+  const all = rows.map((r) => ({
+    ...toClient(r, { relative: true }),
+    balance: lines[r.id] || null,
+    medicalNote: medicalLine(medNumbers[r.id]),
+  }));
   const items = type === 'all' ? all : all.filter((i) => i.kind === type);
 
   return (

@@ -47,7 +47,7 @@ export function RequestRow({ item, showReason = false, showName = false, showCan
       <b>{showName ? `${item.name} · ${item.title}` : item.title}</b>
       <span className={`pill ${item.status}`}>{item.statusLabel}</span>
       <small>{item.when}</small>
-      {showReason && <span className="reason">{item.reason}</span>}
+      {showReason && <span className="reason">{item.medical && <span className="medtag">Medical</span>} {item.reason}</span>}
       {showReason && item.certificate && <CertLink id={item.id} />}
       {item.timed && <CheckIn item={item} />}
       {showCancel && item.canCancel && <CancelRequest item={item} />}

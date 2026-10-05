@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { HALF_DAY, addDays, daysLabel, durationLabel, isSaturday, isSunday, nextWorkingDay, workingDays } from '../../lib/time';
-import { fmtDays } from '../../lib/leaveRules';
+import { FREE_MEDICAL, fmtDays, needsCertificate } from '../../lib/leaveRules';
 
 function hasSaturday(start, end) {
   for (let d = start, i = 0; d <= end && i < 400; d = addDays(d, 1), i++) if (isSaturday(d)) return true;
@@ -25,7 +25,6 @@ const minutesOf = (t) => (/^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 +
 const CATS = [
   { key: 'annual', label: 'Annual' },
   { key: 'casual', label: 'Casual' },
-  { key: 'medical', label: 'Medical' },
 ];
 
 const MAX_PDF = 3 * 1024 * 1024;
@@ -59,10 +58,11 @@ const TABS = [
   { key: 'short', label: 'Short leave' },
 ];
 
-export default function LeaveForm({ today, balance }) {
+export default function LeaveForm({ today, balance, medicalCount = 0 }) {
   const first = nextWorkingDay(today);
   const [type, setType] = useState('full');
   const [category, setCategory] = useState('annual');
+  const [purpose, setPurpose] = useState('personal'); // casual leave: personal or medical
   const [shortDate, setShortDate] = useState(today);
   const [from, setFrom] = useState(() => colomboTime(0));
   const [to, setTo] = useState(() => colomboTime(90));
@@ -154,13 +154,15 @@ export default function LeaveForm({ today, balance }) {
   let need = null;
   if (!problem && type === 'full' && start && end && end >= start) need = workingDays(start, end);
   if (!problem && type === 'half' && date) need = 0.5;
-  const medical = type !== 'short' && category === 'medical';
+  // Medical is casual leave for sickness. The first 3 a year need only a reason; after that, a certificate.
+  const medical = type !== 'short' && category === 'casual' && purpose === 'medical';
+  const certNeeded = medical && needsCertificate(medicalCount);
   const b = balance[category];
-  const available = medical ? Infinity : b.left - b.pending;
-  const after = need === null || medical ? null : available - need;
+  const available = b.left - b.pending;
+  const after = need === null ? null : available - need;
   const over = after !== null && after < 0;
   const catWord = category;
-  const missingCert = medical && !cert;
+  const missingCert = certNeeded && !cert;
 
   async function submit(e) {
     e.preventDefault();
@@ -174,17 +176,17 @@ export default function LeaveForm({ today, balance }) {
       return;
     }
     if (missingCert) {
-      setError('Attach a medical certificate or other proof to send this.');
+      setError('Attach a medical certificate to send this.');
       return;
     }
     setBusy(true);
     try {
       let body;
-      if (type === 'full') body = { type, category, start, end, reason };
-      else if (type === 'half') body = { type, category, start: date, end: date, half, reason };
+      if (type === 'full') body = { type, category, medical, start, end, reason };
+      else if (type === 'half') body = { type, category, medical, start: date, end: date, half, reason };
       else body = { type, date: shortDate, from, to, reason };
       let res;
-      if (medical) {
+      if (certNeeded) {
         // The certificate travels with the request, so one can't be saved without the other.
         const form = new FormData();
         for (const [k, v] of Object.entries(body)) form.append(k, v);
@@ -225,21 +227,29 @@ export default function LeaveForm({ today, balance }) {
       {type !== 'short' && (
         <div className="field" role="radiogroup" aria-label="Type of leave">
           <span className="lbl">Type of leave</span>
-          <div className="halves three">
+          <div className="halves">
             {CATS.map((c) => {
               const cb = balance[c.key];
-              const noLimit = c.key === 'medical';
               return (
                 <label key={c.key} className={`half ${category === c.key ? 'on' : ''}`}>
                   <input type="radio" name="category" value={c.key} checked={category === c.key} onChange={() => { setCategory(c.key); setError(''); }} />
                   <b>{c.label}</b>
-                  <small className={!noLimit && cb.left <= 0 ? 'out' : ''}>
-                    {noLimit ? 'No limit' : `${fmtDays(cb.left)} left`}
-                    {cb.pending > 0 && <span>{fmtDays(cb.pending)} waiting</span>}
+                  <small className={cb.left <= 0 ? 'out' : ''}>
+                    {fmtDays(cb.left)} {cb.left === 1 ? 'day' : 'days'} left{cb.pending > 0 ? ` · ${fmtDays(cb.pending)} waiting` : ''}
                   </small>
                 </label>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {type !== 'short' && category === 'casual' && (
+        <div className="field" role="radiogroup" aria-label="What the casual leave is for">
+          <span className="lbl">What is it for?</span>
+          <div className="seg">
+            <button type="button" role="radio" aria-checked={purpose === 'personal'} className={purpose === 'personal' ? 'on' : ''} onClick={() => { setPurpose('personal'); setError(''); }}>Personal</button>
+            <button type="button" role="radio" aria-checked={purpose === 'medical'} className={purpose === 'medical' ? 'on' : ''} onClick={() => { setPurpose('medical'); setError(''); }}>Medical</button>
           </div>
         </div>
       )}
@@ -302,23 +312,28 @@ export default function LeaveForm({ today, balance }) {
         summary && <div className="note so">{summary}</div>
       ) : (
         need !== null && (
-          medical ? (
-            <div className="note lv">This doesn&apos;t use your 21 days.</div>
-          ) : (
-            <div className={`note ${over ? 'bad' : 'lv'}`}>
-              {over
-                ? `You only have ${fmtDays(Math.max(available, 0))} ${catWord} ${available === 1 ? 'day' : 'days'} left${b.pending > 0 ? " after what's already waiting" : ''}. You can still send this, and your manager will see that it's over.`
-                : `${cap(daysLabel(need))} of ${catWord} leave. You'll have ${fmtDays(after)} ${catWord} ${after === 1 ? 'day' : 'days'} left.`}
-            </div>
-          )
+          <div className={`note ${over ? 'bad' : 'lv'}`}>
+            {over
+              ? `You only have ${fmtDays(Math.max(available, 0))} ${catWord} ${available === 1 ? 'day' : 'days'} left${b.pending > 0 ? " after what's already waiting" : ''}. You can still send this, and your manager will see that it's over.`
+              : `${cap(daysLabel(need))} of ${catWord} leave. You'll have ${fmtDays(after)} ${catWord} ${after === 1 ? 'day' : 'days'} left.`}
+          </div>
         )
+      )}
+      {medical && !certNeeded && (
+        <div className="freecert">
+          <b>No certificate needed</b>
+          <span>This is medical leave {medicalCount + 1} of {FREE_MEDICAL} without one.</span>
+          <span className="dots" aria-hidden="true">
+            {Array.from({ length: FREE_MEDICAL }, (_, i) => <i key={i} className={i <= medicalCount ? 'u' : ''} />)}
+          </span>
+        </div>
       )}
       {!problem && aside && <p className="count" style={{ textAlign: 'left', marginTop: -8 }}>{aside}</p>}
 
-      {medical && (
+      {certNeeded && (
         <div className="field">
           <span className="lbl">
-            Medical certificate or proof <i className={`reqtag ${cert ? 'ok' : ''}`}>{cert ? 'Attached' : 'Required'}</i>
+            Medical certificate <i className={`reqtag ${cert ? 'ok' : ''}`}>{cert ? 'Attached' : 'Required'}</i>
           </span>
           <input ref={fileInput} id="certificate" type="file" accept="image/*,application/pdf" onChange={pickCertificate} hidden />
           {cert ? (
@@ -338,7 +353,7 @@ export default function LeaveForm({ today, balance }) {
           ) : (
             <button type="button" className="drop" onClick={() => fileInput.current?.click()} disabled={certBusy}>
               <b>{certBusy ? 'Reading the file…' : '＋ Take a photo or choose a file'}</b>
-              <small>Certificate, prescription, clinic or hospital receipt, or lab report. Photo or PDF.</small>
+              <small>You&apos;ve taken {medicalCount} medical leaves this year, so a certificate is needed from now on. Photo or PDF.</small>
             </button>
           )}
           {certError && <div className="error" role="alert">{certError}</div>}
@@ -360,7 +375,7 @@ export default function LeaveForm({ today, balance }) {
       </div>
       {error && <div className="error" role="alert">{error}</div>}
       <button className="btn purple" disabled={busy || missingCert}>{busy ? 'Sending…' : 'Submit for approval'}</button>
-      {missingCert && <p className="whyoff">Attach a certificate or proof to send this.</p>}
+      {missingCert && <p className="whyoff">Attach a certificate to send this.</p>}
     </form>
   );
 }

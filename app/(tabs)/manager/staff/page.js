@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireSession } from '../../../../lib/auth';
 import { getEmployees, employeeUsername } from '../../../../lib/employees';
-import { balancesFor, fmtDays, leaveYear } from '../../../../lib/leave';
+import { FREE_MEDICAL, balancesFor, fmtDays, leaveYear } from '../../../../lib/leave';
 import { NextIcon } from '../../../components/Icons';
 
 export const dynamic = 'force-dynamic';
@@ -25,21 +25,25 @@ export default async function Staff() {
           const b = bal[p.name];
           const outA = b.annual.left <= 0;
           const outC = b.casual.left <= 0;
+          const med = b.medicalCount;
           return (
             <Link key={p.name} href={`/manager/staff/${employeeUsername(p.name).replace('@methg', '')}`} className={`srow ${outA || outC ? 'low' : ''}`}>
               <b>{p.name}</b>
               <em>{fmtDays(b.total.left)}<i>left of {b.total.total}</i></em>
               <span className="used">
-                <i className={outA ? 'out' : ''}>Annual <b>{fmtDays(b.annual.used)}</b></i>
-                <i className={outC ? 'out' : ''}>Casual <b>{fmtDays(b.casual.used)}</b></i>
-                <i>Medical <b>{fmtDays(b.medical.used)}</b></i>
+                <i className={outA ? 'out' : ''}>Annual <b>{fmtDays(b.annual.used)}</b> taken</i>
+                <i className={outC ? 'out' : ''}>Casual <b>{fmtDays(b.casual.used)}</b> taken</i>
               </span>
+              <small className={`med ${med >= FREE_MEDICAL ? 'warn' : ''}`}>
+                {med === 0 ? 'No medical leave' : `${med} medical ${med === 1 ? 'leave' : 'leaves'}`}
+                {med >= FREE_MEDICAL && ' · certificate needed now'}
+              </small>
               <NextIcon />
             </Link>
           );
         })}
       </div>
-      <p className="hintline">Days <b>taken</b> this leave year. Red means that type is used up.</p>
+      <p className="hintline">Days <b>taken</b> this leave year. Medical leave is counted inside casual. Red means used up.</p>
     </main>
   );
 }

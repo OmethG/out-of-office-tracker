@@ -4,10 +4,10 @@ import { getSession } from '../../../lib/auth';
 import { query } from '../../../lib/db';
 import { sendManagerApprovalEmail } from '../../../lib/email';
 import { describe } from '../../../lib/requests';
-import { balanceFor, balanceLine, leaveYear } from '../../../lib/leave';
+import { balanceFor, balanceLine, leaveYear, medicalCountFor, medicalLine, needsCertificate } from '../../../lib/leave';
 import { DAY_END, DAY_START, HALF_DAY, SATURDAY_END, addDays, atLocal, isSaturday, isSunday, isYmd, workingDays } from '../../../lib/time';
 
-// Medical leave must come with a certificate or other proof: one photo or PDF.
+// From someone's 4th medical leave in a leave year, a certificate must come with it: one photo or PDF.
 const MAX_FILE = 3.5 * 1024 * 1024;
 function sniff(buf) {
   if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
@@ -17,7 +17,7 @@ function sniff(buf) {
   return null;
 }
 
-// The form sends plain JSON, or multipart (fields + "certificate" file) for medical leave.
+// The form sends plain JSON, or multipart (fields + "certificate" file) when a certificate is attached.
 async function readBody(req) {
   const type = req.headers.get('content-type') || '';
   if (!type.includes('multipart/form-data')) return { body: await req.json().catch(() => null), file: null };
@@ -57,6 +57,7 @@ export async function POST(req) {
   let leaveTime;
   let returnTime;
   let cert = null;
+  let medical = false;
 
   if (type === 'short') {
     start = end = body?.date;
@@ -76,13 +77,18 @@ export async function POST(req) {
     if (!isYmd(start) || !isYmd(end)) {
       return NextResponse.json({ error: 'Choose the date(s) for your leave.' }, { status: 400 });
     }
-    if (!['annual', 'casual', 'medical'].includes(category)) {
-      return NextResponse.json({ error: 'Choose annual, casual or medical leave.' }, { status: 400 });
+    if (!['annual', 'casual'].includes(category)) {
+      return NextResponse.json({ error: 'Choose annual or casual leave.' }, { status: 400 });
     }
-    if (category === 'medical') {
-      if (!file || !file.size) {
-        return NextResponse.json({ error: 'Attach a medical certificate or other proof to send medical leave.' }, { status: 400 });
-      }
+    // Medical is casual leave for sickness. It uses casual days.
+    medical = category === 'casual' && (body.medical === true || body.medical === 'true');
+    if (medical && (!file || !file.size) && needsCertificate(await medicalCountFor(session.name, start))) {
+      return NextResponse.json(
+        { error: "You've already taken 3 medical leaves this year, so attach a medical certificate to send this." },
+        { status: 400 }
+      );
+    }
+    if (medical && file && file.size) {
       if (file.size > MAX_FILE) {
         return NextResponse.json({ error: 'That file is too large. Use a photo, or a PDF under 3 MB.' }, { status: 400 });
       }
@@ -117,13 +123,13 @@ export async function POST(req) {
   // The request and its certificate are saved together, or not at all.
   const insert = `INSERT INTO leave_requests
       (kind, leave_type, start_date, end_date, half, days, leave_category,
-       employee_name, employee_email, leave_time, expected_return_time, reason, decision_token, certificate_name)
-     VALUES ('leave', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       employee_name, employee_email, leave_time, expected_return_time, reason, decision_token, certificate_name, medical)
+     VALUES ('leave', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      RETURNING *`;
   const { rows } = await query(
     cert
       ? `WITH r AS (${insert}),
-              a AS (INSERT INTO leave_attachments (request_id, name, mime, size, data) SELECT id, $13, $14, $15, $16 FROM r)
+              a AS (INSERT INTO leave_attachments (request_id, name, mime, size, data) SELECT id, $13, $15, $16, $17 FROM r)
          SELECT * FROM r`
       : insert,
     [
@@ -140,6 +146,7 @@ export async function POST(req) {
       reason,
       token,
       cert ? cert.name : null,
+      medical,
       ...(cert ? [cert.mime, cert.data.length, cert.data] : []),
     ]
   );
@@ -149,7 +156,8 @@ export async function POST(req) {
   try {
     // The manager's email shows the same balance line as the app (red when there aren't enough days).
     const balance = await balanceFor(row.employee_name, leaveYear(row.start_date));
-    await sendManagerApprovalEmail(row, balanceLine(row, balance));
+    const medNote = row.medical ? medicalLine(await medicalCountFor(row.employee_name, row.start_date)) : null;
+    await sendManagerApprovalEmail(row, balanceLine(row, balance), medNote);
   } catch (err) {
     console.error('Failed to email manager', err);
     return NextResponse.json({
