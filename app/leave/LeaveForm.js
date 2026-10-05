@@ -21,6 +21,11 @@ function colomboTime(plusMinutes = 0) {
 }
 
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+// "15:30" → "3:30 PM"
+const clock = (t) => {
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
 const minutesOf = (t) => (/^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) : NaN);
 const CATS = [
   { key: 'annual', label: 'Annual' },
@@ -66,6 +71,7 @@ export default function LeaveForm({ today, balance, medicalCount = 0 }) {
   const [shortDate, setShortDate] = useState(today);
   const [from, setFrom] = useState(() => colomboTime(0));
   const [to, setTo] = useState(() => colomboTime(90));
+  const [noReturn, setNoReturn] = useState(false); // short leave: leaving for the day
   const [start, setStart] = useState(first);
   const [end, setEnd] = useState(first);
   const [date, setDate] = useState(first);
@@ -143,8 +149,12 @@ export default function LeaveForm({ today, balance, medicalCount = 0 }) {
   // Short leave: just the time away.
   if (type === 'short') {
     const a = minutesOf(from);
-    const b = minutesOf(to);
+    const dayEnd = shortDate && isSaturday(shortDate) ? 13 * 60 : 17 * 60;
+    const b = noReturn ? dayEnd : minutesOf(to);
     if (!shortDate) problem = 'Choose the date.';
+    else if (noReturn && isNaN(a)) problem = 'Choose the time you are leaving.';
+    else if (noReturn && a >= dayEnd) problem = `The working day ends at ${dayEnd === 780 ? '1:00 PM' : '5:00 PM'}. Choose an earlier leaving time.`;
+    else if (noReturn) summary = `Leaving at ${clock(from)} for the rest of the day. Short leave doesn't use your 21 days.`;
     else if (isNaN(a) || isNaN(b)) problem = 'Choose the leaving and back-by times.';
     else if (b <= a) problem = '"Back by" needs to be after "Leaving at".';
     else summary = `${durationLabel((b - a) * 60000)}. Short leave is recorded but doesn't use your 21 days.`;
@@ -184,7 +194,7 @@ export default function LeaveForm({ today, balance, medicalCount = 0 }) {
       let body;
       if (type === 'full') body = { type, category, medical, start, end, reason };
       else if (type === 'half') body = { type, category, medical, start: date, end: date, half, reason };
-      else body = { type, date: shortDate, from, to, reason };
+      else body = { type, date: shortDate, from, to, noReturn, reason };
       let res;
       if (certNeeded) {
         // The certificate travels with the request, so one can't be saved without the other.
@@ -260,16 +270,23 @@ export default function LeaveForm({ today, balance, medicalCount = 0 }) {
             <label className="lbl" htmlFor="sdate">Date</label>
             <input id="sdate" className="input" type="date" value={shortDate} onChange={(e) => setShortDate(e.target.value)} required />
           </div>
-          <div className="two">
+          <div className={noReturn ? '' : 'two'}>
             <div className="field">
               <label className="lbl" htmlFor="sfrom">Leaving at</label>
               <input id="sfrom" className="input" type="time" value={from} onChange={(e) => setFrom(e.target.value)} required />
             </div>
-            <div className="field">
-              <label className="lbl" htmlFor="sto">Back by</label>
-              <input id="sto" className="input" type="time" value={to} onChange={(e) => setTo(e.target.value)} required />
-            </div>
+            {!noReturn && (
+              <div className="field">
+                <label className="lbl" htmlFor="sto">Back by</label>
+                <input id="sto" className="input" type="time" value={to} onChange={(e) => setTo(e.target.value)} required />
+              </div>
+            )}
           </div>
+          <button type="button" role="switch" aria-checked={noReturn} className={`swrow ${noReturn ? 'on' : ''}`} onClick={() => { setNoReturn(!noReturn); setError(''); }}>
+            <b>I won&apos;t be coming back today</b>
+            <small>{noReturn ? 'Leaving for the day.' : "Turn on if you're leaving for the day."}</small>
+            <span className="tog" aria-hidden="true" />
+          </button>
         </>
       ) : type === 'full' ? (
         <div className="two">

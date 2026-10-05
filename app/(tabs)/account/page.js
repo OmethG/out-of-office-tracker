@@ -1,6 +1,7 @@
 import { requireSession } from '../../../lib/auth';
 import ThemeToggle from '../../components/ThemeToggle';
 import SignOut from './SignOut';
+import LeaveRules from '../../components/LeaveRules';
 import { LeaveBreakdown, LeaveTaken } from '../../components/LeaveSummary';
 import { balanceFor, leaveTaken, leaveYear } from '../../../lib/leave';
 
@@ -43,13 +44,17 @@ export default async function AccountPage() {
           <p>Dark mode is saved on this phone only.</p>
         </div>
 
-        <div className="card">
-          <h2>Add MethG Staff to your home screen</h2>
-          <ol className="steps">
-            <li><b>iPhone:</b> open this site in Safari, tap the Share button, then “Add to Home Screen”.</li>
-            <li><b>Android:</b> open it in Chrome, tap the ⋮ menu, then “Add to Home screen” or “Install app”.</li>
-          </ol>
-        </div>
+        {manager ? (
+          <div className="card">
+            <h2>Add MethG Staff to your home screen</h2>
+            <ol className="steps">
+              <li><b>iPhone:</b> open this site in Safari, tap the Share button, then “Add to Home Screen”.</li>
+              <li><b>Android:</b> open it in Chrome, tap the ⋮ menu, then “Add to Home screen” or “Install app”.</li>
+            </ol>
+          </div>
+        ) : (
+          <LeaveRules />
+        )}
 
         <SignOut />
       </main>

@@ -58,13 +58,20 @@ export async function POST(req) {
   let returnTime;
   let cert = null;
   let medical = false;
+  let noReturn = false;
 
   if (type === 'short') {
     start = end = body?.date;
-    const { from, to } = body || {};
+    const { from } = body || {};
     if (!isYmd(start)) return NextResponse.json({ error: 'Choose the date.' }, { status: 400 });
+    // "I won't be coming back today": the leave runs to the end of the working day.
+    noReturn = body?.noReturn === true || body?.noReturn === 'true';
+    const to = noReturn ? (isSaturday(start) ? SATURDAY_END : DAY_END) : body?.to;
     if (!HHMM.test(from || '') || !HHMM.test(to || '')) {
-      return NextResponse.json({ error: 'Choose the leaving and back-by times.' }, { status: 400 });
+      return NextResponse.json({ error: noReturn ? 'Choose the time you are leaving.' : 'Choose the leaving and back-by times.' }, { status: 400 });
+    }
+    if (noReturn && to <= from) {
+      return NextResponse.json({ error: `The working day ends at ${isSaturday(start) ? '1:00 PM' : '5:00 PM'}. Choose an earlier leaving time.` }, { status: 400 });
     }
     if (to <= from) return NextResponse.json({ error: '"Back by" needs to be after "Leaving at".' }, { status: 400 });
     leaveTime = atLocal(start, from);
@@ -123,13 +130,13 @@ export async function POST(req) {
   // The request and its certificate are saved together, or not at all.
   const insert = `INSERT INTO leave_requests
       (kind, leave_type, start_date, end_date, half, days, leave_category,
-       employee_name, employee_email, leave_time, expected_return_time, reason, decision_token, certificate_name, medical)
-     VALUES ('leave', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       employee_name, employee_email, leave_time, expected_return_time, reason, decision_token, certificate_name, medical, no_return)
+     VALUES ('leave', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      RETURNING *`;
   const { rows } = await query(
     cert
       ? `WITH r AS (${insert}),
-              a AS (INSERT INTO leave_attachments (request_id, name, mime, size, data) SELECT id, $13, $15, $16, $17 FROM r)
+              a AS (INSERT INTO leave_attachments (request_id, name, mime, size, data) SELECT id, $13, $16, $17, $18 FROM r)
          SELECT * FROM r`
       : insert,
     [
@@ -147,6 +154,7 @@ export async function POST(req) {
       token,
       cert ? cert.name : null,
       medical,
+      noReturn,
       ...(cert ? [cert.mime, cert.data.length, cert.data] : []),
     ]
   );
