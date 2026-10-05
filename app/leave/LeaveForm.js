@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { HALF_DAY, addDays, dateLabel, daysLabel, durationLabel, isSaturday, isSunday, nextWorkingDay, workingDays } from '../../lib/time';
+import { HALF_DAY, addDays, daysLabel, durationLabel, isSaturday, isSunday, nextWorkingDay, workingDays } from '../../lib/time';
 import { fmtDays } from '../../lib/leaveRules';
 
 function hasSaturday(start, end) {
@@ -131,14 +131,12 @@ export default function LeaveForm({ today, balance }) {
       const n = workingDays(start, end);
       if (n === 0) problem = 'Sunday is already a day off. Choose a working day.';
       else {
-        summary = `${daysLabel(n)} off · back ${dateLabel(nextWorkingDay(end)).text}`;
         if (hasSaturday(start, end)) aside = 'Saturday counts as half a day, since work finishes at 1 PM.';
       }
     }
   }
   if (type === 'half' && date) {
     if (isSunday(date)) problem = 'Sunday is already a day off. Choose a working day.';
-    else summary = `${dateLabel(date).text} · ${HALF_DAY[half].text}`;
     if (saturdayHalf) aside = 'Saturdays finish at 1 PM, so only the morning can be taken.';
   }
 
@@ -308,12 +306,9 @@ export default function LeaveForm({ today, balance }) {
             <div className="note lv">This doesn&apos;t use your 21 days.</div>
           ) : (
             <div className={`note ${over ? 'bad' : 'lv'}`}>
-              {summary}
-              <span className="note-sub">
-                {over
-                  ? `You only have ${fmtDays(Math.max(available, 0))} ${catWord} ${available === 1 ? 'day' : 'days'} left${b.pending > 0 ? " after what's already waiting" : ''}. You can still send this, and your manager will see that it's over.`
-                  : `${cap(daysLabel(need))} of ${catWord} leave. You'll have ${fmtDays(after)} ${catWord} ${after === 1 ? 'day' : 'days'} left.`}
-              </span>
+              {over
+                ? `You only have ${fmtDays(Math.max(available, 0))} ${catWord} ${available === 1 ? 'day' : 'days'} left${b.pending > 0 ? " after what's already waiting" : ''}. You can still send this, and your manager will see that it's over.`
+                : `${cap(daysLabel(need))} of ${catWord} leave. You'll have ${fmtDays(after)} ${catWord} ${after === 1 ? 'day' : 'days'} left.`}
             </div>
           )
         )
