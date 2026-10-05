@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function ApprovalCard({ item }) {
@@ -42,6 +43,13 @@ export default function ApprovalCard({ item }) {
       </div>
       <div className="when">{item.when}</div>
       <p>{item.reason}</p>
+      {item.certificate && (
+        <Link href={`/certificate/${item.id}`} className="certlink">
+          <span className="paper" aria-hidden="true"><i /><i /><i /><i className="s" /></span>
+          <span><b>Medical certificate</b><small>Tap to view</small></span>
+          <em>View ›</em>
+        </Link>
+      )}
       {item.balance && <span className={`use ${item.balance.tone}`}>{item.balance.text}</span>}
       <div className="meta">Requested {item.requestedAt}</div>
       {error && <div className="error" role="alert">{error}</div>}

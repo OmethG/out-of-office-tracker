@@ -30,7 +30,7 @@ function Meter({ label, b }) {
       <div className="top">
         <b>{label}</b>
         <span>
-          {fmtDays(b.used)} used · <b className={b.left <= 0 ? 'out' : 'left'}>{fmtDays(b.left)} left</b> of {b.total}
+          {fmtDays(b.used)} taken · <b className={b.left <= 0 ? 'out' : 'left'}>{fmtDays(b.left)} left</b> of {b.total}
         </span>
       </div>
       <div className="bar" aria-hidden="true">
@@ -43,7 +43,7 @@ function Meter({ label, b }) {
 
 // Full breakdown, used on the staff Account tab and the manager's Staff page.
 export function LeaveBreakdown({ balance, year, title = 'Your leave' }) {
-  const waiting = ['annual', 'casual'].filter((c) => balance[c].pending > 0);
+  const waiting = ['annual', 'casual', 'medical'].filter((c) => balance[c].pending > 0);
   const pendingTotal = waiting.reduce((n, c) => n + balance[c].pending, 0);
   const waitingText = `${waiting.map((c) => `${fmtDays(balance[c].pending)} ${c}`).join(' and ')} ${pendingTotal <= 1 ? 'day' : 'days'}`;
   return (
@@ -58,6 +58,12 @@ export function LeaveBreakdown({ balance, year, title = 'Your leave' }) {
       </div>
       <Meter label="Annual" b={balance.annual} />
       <Meter label="Casual" b={balance.casual} />
+      <div className="meter">
+        <div className="top">
+          <b>Medical</b>
+          <span><b className="plain">{fmtDays(balance.medical.used)} taken</b> · no limit</span>
+        </div>
+      </div>
       <span className="mini">
         {waiting.length > 0 && (
           <><b>{waitingText}</b> waiting for approval (light shading). </>
@@ -84,7 +90,10 @@ export function LeaveTaken({ rows }) {
             return (
               <div key={r.id}>
                 <span>{cat === 'short' ? d.when : when}</span>
-                <small>{cat === 'short' ? 'Short leave' : `${CATEGORY_LABEL[cat]} · ${d.detailLabel.startsWith('Half') ? 'Half day' : 'Full day'}`}</small>
+                <small>
+                  {cat === 'short' ? 'Short leave' : `${CATEGORY_LABEL[cat]} · ${d.detailLabel.startsWith('Half') ? 'Half day' : 'Full day'}`}
+                  {r.certificate_name && <> · <Link href={`/certificate/${r.id}`}>Certificate</Link></>}
+                </small>
                 <em>{cat === 'short' ? d.detailLabel : fmtDays(r.days)}</em>
               </div>
             );

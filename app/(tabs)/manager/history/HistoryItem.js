@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function HistoryItem({ item }) {
@@ -33,6 +34,7 @@ export default function HistoryItem({ item }) {
       </summary>
       <div className="more">
         <p>{item.reason}</p>
+        {item.certificate && <Link href={`/certificate/${item.id}`} className="linkbtn cert">View medical certificate ›</Link>}
         <span className="meta">
           Requested {item.requestedAt}
           {item.status === 'cancelled'

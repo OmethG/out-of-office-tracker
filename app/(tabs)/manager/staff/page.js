@@ -7,7 +7,7 @@ import { NextIcon } from '../../../components/Icons';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Staff · MethG Staff' };
 
-// Manager: everyone's leave left this leave year. Anyone who has used up annual or casual leave shows in red.
+// Manager: days taken of each leave type this leave year, and total days left. Red means a type is used up.
 export default async function Staff() {
   await requireSession('manager');
   const year = leaveYear();
@@ -18,7 +18,7 @@ export default async function Staff() {
     <main className="page">
       <div className="hello">
         <h1>Staff</h1>
-        <span className="sub">Leaves left · {year.long}</span>
+        <span className="sub">{year.long}</span>
       </div>
       <div className="list">
         {people.map((p) => {
@@ -26,19 +26,20 @@ export default async function Staff() {
           const outA = b.annual.left <= 0;
           const outC = b.casual.left <= 0;
           return (
-            <Link key={p.name} href={`/manager/staff/${employeeUsername(p.name).replace('@methg', '')}`} className={`brow ${outA || outC ? 'low' : ''}`}>
+            <Link key={p.name} href={`/manager/staff/${employeeUsername(p.name).replace('@methg', '')}`} className={`srow ${outA || outC ? 'low' : ''}`}>
               <b>{p.name}</b>
-              <small>
-                <span className={outA ? 'out' : ''}>Annual {fmtDays(b.annual.left)}</span>
-                {' · '}
-                <span className={outC ? 'out' : ''}>Casual {fmtDays(b.casual.left)}</span>
-              </small>
-              <em>{fmtDays(b.total.left)}<i>of {b.total.total}</i></em>
+              <em>{fmtDays(b.total.left)}<i>left of {b.total.total}</i></em>
+              <span className="used">
+                <i className={outA ? 'out' : ''}>Annual <b>{fmtDays(b.annual.used)}</b></i>
+                <i className={outC ? 'out' : ''}>Casual <b>{fmtDays(b.casual.used)}</b></i>
+                <i>Medical <b>{fmtDays(b.medical.used)}</b></i>
+              </span>
               <NextIcon />
             </Link>
           );
         })}
       </div>
+      <p className="hintline">Days <b>taken</b> this leave year. Red means that type is used up.</p>
     </main>
   );
 }

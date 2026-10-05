@@ -33,6 +33,12 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: 'This has already started, so it can no longer be cancelled here. Please speak to your manager.' }, { status: 409 });
   }
 
+  // A cancelled medical request doesn't keep its certificate.
+  if (row.certificate_name) {
+    await query('DELETE FROM leave_attachments WHERE request_id = $1', [row.id]);
+    await query('UPDATE leave_requests SET certificate_name = NULL WHERE id = $1', [row.id]);
+  }
+
   // The manager only needs telling when something they approved is cancelled.
   if (row.was === 'approved') {
     try {

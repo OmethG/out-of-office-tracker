@@ -15,7 +15,7 @@ export default function CancelRequest({ item }) {
 
   let effect = "It will be taken off your manager's list.";
   if (approved) {
-    const days = item.days && item.category && item.category !== 'short'
+    const days = item.days && ['annual', 'casual'].includes(item.category)
       ? ` and ${item.days === 0.5 ? 'the half day goes' : item.days === 1 ? 'the day goes' : `the ${item.days} days go`} back to your ${item.category} leave`
       : '';
     effect = `Your manager will be told${days}.`;

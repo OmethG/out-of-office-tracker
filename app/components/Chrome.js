@@ -29,6 +29,17 @@ export function TitleBar({ title, back = '/' }) {
   );
 }
 
+// Small "certificate attached" row that opens the full-screen viewer.
+export function CertLink({ id, label = 'Medical certificate' }) {
+  return (
+    <Link href={`/certificate/${id}`} className="certlink">
+      <span className="paper" aria-hidden="true"><i /><i /><i /><i className="s" /></span>
+      <span><b>{label}</b><small>Tap to view</small></span>
+      <em>View ›</em>
+    </Link>
+  );
+}
+
 export function RequestRow({ item, showReason = false, showName = false, showCancel = false }) {
   return (
     <div className={`row ${item.status === 'cancelled' ? 'gone' : ''}`}>
@@ -37,6 +48,7 @@ export function RequestRow({ item, showReason = false, showName = false, showCan
       <span className={`pill ${item.status}`}>{item.statusLabel}</span>
       <small>{item.when}</small>
       {showReason && <span className="reason">{item.reason}</span>}
+      {showReason && item.certificate && <CertLink id={item.id} />}
       {item.timed && <CheckIn item={item} />}
       {showCancel && item.canCancel && <CancelRequest item={item} />}
     </div>

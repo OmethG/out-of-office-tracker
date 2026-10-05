@@ -7,6 +7,28 @@ import { describe } from '../../../lib/requests';
 import { balanceFor, balanceLine, leaveYear } from '../../../lib/leave';
 import { DAY_END, DAY_START, HALF_DAY, SATURDAY_END, addDays, atLocal, isSaturday, isSunday, isYmd, workingDays } from '../../../lib/time';
 
+// Medical leave must come with a certificate or other proof: one photo or PDF.
+const MAX_FILE = 3.5 * 1024 * 1024;
+function sniff(buf) {
+  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  if (buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (buf.length > 12 && buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';
+  if (buf.length > 5 && buf.toString('latin1', 0, 5) === '%PDF-') return 'application/pdf';
+  return null;
+}
+
+// The form sends plain JSON, or multipart (fields + "certificate" file) for medical leave.
+async function readBody(req) {
+  const type = req.headers.get('content-type') || '';
+  if (!type.includes('multipart/form-data')) return { body: await req.json().catch(() => null), file: null };
+  const form = await req.formData().catch(() => null);
+  if (!form) return { body: null, file: null };
+  const body = {};
+  for (const [k, v] of form.entries()) if (typeof v === 'string') body[k] = v;
+  const f = form.get('certificate');
+  return { body, file: f && typeof f !== 'string' ? f : null };
+}
+
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // Staff: send a leave request: full day(s) or half day (annual or casual), or short leave (a few hours).
@@ -16,7 +38,7 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => null);
+  const { body, file } = await readBody(req);
   const type = body?.type;
   const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
   if (!['full', 'half', 'short'].includes(type)) {
@@ -34,6 +56,7 @@ export async function POST(req) {
   let days = null;
   let leaveTime;
   let returnTime;
+  let cert = null;
 
   if (type === 'short') {
     start = end = body?.date;
@@ -53,8 +76,21 @@ export async function POST(req) {
     if (!isYmd(start) || !isYmd(end)) {
       return NextResponse.json({ error: 'Choose the date(s) for your leave.' }, { status: 400 });
     }
-    if (!['annual', 'casual'].includes(category)) {
-      return NextResponse.json({ error: 'Choose annual or casual leave.' }, { status: 400 });
+    if (!['annual', 'casual', 'medical'].includes(category)) {
+      return NextResponse.json({ error: 'Choose annual, casual or medical leave.' }, { status: 400 });
+    }
+    if (category === 'medical') {
+      if (!file || !file.size) {
+        return NextResponse.json({ error: 'Attach a medical certificate or other proof to send medical leave.' }, { status: 400 });
+      }
+      if (file.size > MAX_FILE) {
+        return NextResponse.json({ error: 'That file is too large. Use a photo, or a PDF under 3 MB.' }, { status: 400 });
+      }
+      const data = Buffer.from(await file.arrayBuffer());
+      const mime = sniff(data);
+      if (!mime) return NextResponse.json({ error: 'Attach a photo (JPG or PNG) or a PDF.' }, { status: 400 });
+      const name = String(file.name || 'certificate').replace(/[^\w.\- ]+/g, '_').slice(-80) || 'certificate';
+      cert = { name, mime, data };
     }
     if (type === 'full') {
       if (end < start) return NextResponse.json({ error: 'The last day is before the first day.' }, { status: 400 });
@@ -78,12 +114,18 @@ export async function POST(req) {
   }
 
   const token = crypto.randomBytes(24).toString('hex');
-  const { rows } = await query(
-    `INSERT INTO leave_requests
+  // The request and its certificate are saved together, or not at all.
+  const insert = `INSERT INTO leave_requests
       (kind, leave_type, start_date, end_date, half, days, leave_category,
-       employee_name, employee_email, leave_time, expected_return_time, reason, decision_token)
-     VALUES ('leave', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-     RETURNING *`,
+       employee_name, employee_email, leave_time, expected_return_time, reason, decision_token, certificate_name)
+     VALUES ('leave', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+     RETURNING *`;
+  const { rows } = await query(
+    cert
+      ? `WITH r AS (${insert}),
+              a AS (INSERT INTO leave_attachments (request_id, name, mime, size, data) SELECT id, $13, $14, $15, $16 FROM r)
+         SELECT * FROM r`
+      : insert,
     [
       type,
       start,
@@ -97,6 +139,8 @@ export async function POST(req) {
       returnTime.toISOString(),
       reason,
       token,
+      cert ? cert.name : null,
+      ...(cert ? [cert.mime, cert.data.length, cert.data] : []),
     ]
   );
   const row = rows[0];
