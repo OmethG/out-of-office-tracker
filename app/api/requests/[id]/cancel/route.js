@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '../../../../../lib/auth';
 import { query } from '../../../../../lib/db';
 import { sendManagerCancelledEmail } from '../../../../../lib/email';
+import { pushCancelled } from '../../../../../lib/notify';
 
 // Staff: cancel one of their own requests. Pending ones any time; approved ones until they start.
 export async function POST(req, { params }) {
@@ -41,6 +42,7 @@ export async function POST(req, { params }) {
 
   // The manager only needs telling when something they approved is cancelled.
   if (row.was === 'approved') {
+    await pushCancelled(row);
     try {
       await sendManagerCancelledEmail(row);
     } catch (err) {

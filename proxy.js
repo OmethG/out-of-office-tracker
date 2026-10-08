@@ -14,7 +14,8 @@ export async function proxy(req) {
   if (pathname === '/login') {
     return session ? NextResponse.redirect(new URL(home, req.url)) : NextResponse.next();
   }
-  if (pathname === '/api/login' || pathname === '/api/logout' || isUnder(pathname, '/api/decision')) {
+  // The daily birthday job checks its own secret.
+  if (pathname === '/api/login' || pathname === '/api/logout' || isUnder(pathname, '/api/decision') || isUnder(pathname, '/api/cron')) {
     return NextResponse.next();
   }
 
@@ -38,6 +39,6 @@ export async function proxy(req) {
 
 export const config = {
   matcher: [
-    '/((?!_next/|icons/|brand/|manifest.webmanifest|icon.png|apple-icon.png|favicon.ico|robots.txt).*)',
+    '/((?!_next/|icons/|brand/|sw.js|manifest.webmanifest|icon.png|apple-icon.png|favicon.ico|robots.txt).*)',
   ],
 };

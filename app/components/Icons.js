@@ -45,3 +45,6 @@ export const CheckIcon = () => (
 export const CakeIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><path {...s} d="M4.5 20.5v-7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7M3 20.5h18" /><path {...s} d="M4.5 15.5c1.25 1 2.5 1 3.75 0s2.5-1 3.75 0 2.5 1 3.75 0 2.5-1 3.75 0M12 11.5V8" /><path {...s} d="M12 3.5c.9 1 1.3 1.8 1.3 2.5a1.3 1.3 0 0 1-2.6 0c0-.7.4-1.5 1.3-2.5z" /></svg>
 );
+export const BellIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path {...s} d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" /><path {...s} d="M10 20.5a2.2 2.2 0 0 0 4 0" /></svg>
+);

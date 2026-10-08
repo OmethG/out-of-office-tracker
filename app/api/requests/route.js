@@ -4,6 +4,7 @@ import { getSession } from '../../../lib/auth';
 import { query } from '../../../lib/db';
 import { sendManagerApprovalEmail } from '../../../lib/email';
 import { describe } from '../../../lib/requests';
+import { pushNewRequest } from '../../../lib/notify';
 
 // Staff: send a step-out request. The name always comes from the sign-in, never from the form.
 export async function POST(req) {
@@ -41,6 +42,7 @@ export async function POST(req) {
   );
   const row = rows[0];
   const d = describe(row);
+  await pushNewRequest(row);
 
   try {
     await sendManagerApprovalEmail(row);

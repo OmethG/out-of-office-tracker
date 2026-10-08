@@ -4,6 +4,7 @@ import { getSession } from '../../../lib/auth';
 import { query } from '../../../lib/db';
 import { sendManagerApprovalEmail } from '../../../lib/email';
 import { describe } from '../../../lib/requests';
+import { pushNewRequest } from '../../../lib/notify';
 import { balanceFor, balanceLine, leaveYear, medicalCountFor, medicalLine, needsCertificate } from '../../../lib/leave';
 import { DAY_END, DAY_START, HALF_DAY, SATURDAY_END, addDays, atLocal, isSaturday, isSunday, isYmd, workingDays } from '../../../lib/time';
 
@@ -160,6 +161,7 @@ export async function POST(req) {
   );
   const row = rows[0];
   const d = describe(row);
+  await pushNewRequest(row);
 
   try {
     // The manager's email shows the same balance line as the app (red when there aren't enough days).

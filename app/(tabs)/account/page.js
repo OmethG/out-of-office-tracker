@@ -3,6 +3,8 @@ import { requireSession } from '../../../lib/auth';
 import { NextIcon, PeopleIcon } from '../../components/Icons';
 import ThemeToggle from '../../components/ThemeToggle';
 import SignOut from './SignOut';
+import Notifications from '../../components/Notifications';
+import { publicKey } from '../../../lib/push';
 import LeaveRules from '../../components/LeaveRules';
 import { LeaveBreakdown, LeaveTaken } from '../../components/LeaveSummary';
 import { balanceFor, leaveTaken, leaveYear } from '../../../lib/leave';
@@ -32,6 +34,8 @@ export default async function AccountPage() {
             </span>
           </div>
         </div>
+
+        {publicKey() && <Notifications publicKey={publicKey()} />}
 
         {!manager && (
           <>
