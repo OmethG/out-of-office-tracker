@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import { requireSession } from '../../../lib/auth';
+import { NextIcon, PeopleIcon } from '../../components/Icons';
 import ThemeToggle from '../../components/ThemeToggle';
 import SignOut from './SignOut';
 import LeaveRules from '../../components/LeaveRules';
@@ -33,6 +35,11 @@ export default async function AccountPage() {
 
         {!manager && (
           <>
+            <Link href="/staff" className="navrow">
+              <span className="ni"><PeopleIcon /></span>
+              <b>Staff</b>
+              <NextIcon />
+            </Link>
             <LeaveBreakdown balance={balance} year={year} />
             <LeaveTaken rows={taken} />
           </>

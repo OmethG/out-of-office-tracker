@@ -42,3 +42,6 @@ export const DownloadIcon = () => (
 export const CheckIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><path {...s} strokeWidth="3" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
 );
+export const CakeIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path {...s} d="M4.5 20.5v-7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7M3 20.5h18" /><path {...s} d="M4.5 15.5c1.25 1 2.5 1 3.75 0s2.5-1 3.75 0 2.5 1 3.75 0 2.5-1 3.75 0M12 11.5V8" /><path {...s} d="M12 3.5c.9 1 1.3 1.8 1.3 2.5a1.3 1.3 0 0 1-2.6 0c0-.7.4-1.5 1.3-2.5z" /></svg>
+);
