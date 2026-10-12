@@ -10,7 +10,8 @@ function nowInColombo() {
   }).format(new Date());
 }
 
-// The check-in line under a step out (green when back, red when not), plus the "I'm back" button.
+// The check-in line under a step out or short leave (green when back, red when not), plus the "I'm back"
+// button ("I'm in" when they're coming to office late).
 export default function CheckIn({ item }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -25,7 +26,7 @@ export default function CheckIn({ item }) {
   }
 
   async function confirm() {
-    if (!time) return setError('Choose the time you got back.');
+    if (!time) return setError(item.late ? 'Choose the time you got in.' : 'Choose the time you got back.');
     setBusy(true);
     setError('');
     try {
@@ -49,11 +50,11 @@ export default function CheckIn({ item }) {
     <>
       {item.back && <span className={`backat ${item.back.tone}`}>{item.back.label}</span>}
       {item.canCheckIn && !open && (
-        <button type="button" className="back-btn" onClick={start}>I&apos;m back</button>
+        <button type="button" className="back-btn" onClick={start}>{item.late ? "I'm in" : "I'm back"}</button>
       )}
       {item.canCheckIn && open && (
         <div className="checkin">
-          <label htmlFor={`back-${item.id}`}>What time did you get back?</label>
+          <label htmlFor={`back-${item.id}`}>{item.late ? 'What time did you get in?' : 'What time did you get back?'}</label>
           <input
             id={`back-${item.id}`}
             className="input"

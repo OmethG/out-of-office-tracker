@@ -57,6 +57,13 @@ async function shrinkPhoto(file) {
     URL.revokeObjectURL(url);
   }
 }
+// The three kinds of short leave, in the order they happen in a day.
+const SHORT_KINDS = [
+  { key: 'late', label: 'Coming to office late', hint: 'Arriving after 9:00 AM' },
+  { key: 'out', label: 'Out of office for a few hours', hint: 'Leaving and coming back' },
+  { key: 'early', label: 'Leaving office early', hint: 'Not coming back today' },
+];
+
 const TABS = [
   { key: 'full', label: 'Full day' },
   { key: 'half', label: 'Half day' },
@@ -71,7 +78,8 @@ export default function LeaveForm({ today, balance, medicalCount = 0 }) {
   const [shortDate, setShortDate] = useState(today);
   const [from, setFrom] = useState(() => colomboTime(0));
   const [to, setTo] = useState(() => colomboTime(90));
-  const [noReturn, setNoReturn] = useState(false); // short leave: leaving for the day
+  const [mode, setMode] = useState('out'); // short leave: 'late' | 'out' | 'early'
+  const [arrive, setArrive] = useState('10:00'); // coming to office late: arrival time
   const [start, setStart] = useState(first);
   const [end, setEnd] = useState(first);
   const [date, setDate] = useState(first);
@@ -147,14 +155,26 @@ export default function LeaveForm({ today, balance, medicalCount = 0 }) {
   }
 
   // Short leave: just the time away.
-  if (type === 'short') {
+  const noReturn = mode === 'early';
+  if (type === 'short' && mode === 'late') {
+    // Coming to office late: from 9:00 until they arrive, no later than 1 PM.
+    const t = minutesOf(arrive);
+    const sat = shortDate && isSaturday(shortDate);
+    if (!shortDate) problem = 'Choose the date.';
+    else if (isSunday(shortDate)) problem = 'Sunday is already a day off. Choose a working day.';
+    else if (isNaN(t)) problem = 'Choose the time you will be in.';
+    else if (t <= 9 * 60) problem = 'The day starts at 9:00 AM. Choose a later time.';
+    else if (sat ? t >= 13 * 60 : t > 13 * 60) problem = 'Coming in after 1 PM? Please take a morning half day instead.';
+    else if (shortDate === today && arrive <= colomboTime(0)) problem = 'That time has already passed. Choose a later time.';
+    else summary = `Coming to office late at ${clock(arrive)}, ${durationLabel((t - 9 * 60) * 60000)} after 9:00. Short leave doesn't use your 21 days.`;
+  } else if (type === 'short') {
     const a = minutesOf(from);
     const dayEnd = shortDate && isSaturday(shortDate) ? 13 * 60 : 17 * 60;
     const b = noReturn ? dayEnd : minutesOf(to);
     if (!shortDate) problem = 'Choose the date.';
     else if (noReturn && isNaN(a)) problem = 'Choose the time you are leaving.';
     else if (noReturn && a >= dayEnd) problem = `The working day ends at ${dayEnd === 780 ? '1:00 PM' : '5:00 PM'}. Choose an earlier leaving time.`;
-    else if (noReturn) summary = `Leaving at ${clock(from)} for the rest of the day. Short leave doesn't use your 21 days.`;
+    else if (noReturn) summary = `Leaving office early at ${clock(from)}, for the rest of the day. Short leave doesn't use your 21 days.`;
     else if (isNaN(a) || isNaN(b)) problem = 'Choose the leaving and back-by times.';
     else if (b <= a) problem = '"Back by" needs to be after "Leaving at".';
     else summary = `${durationLabel((b - a) * 60000)}. Short leave is recorded but doesn't use your 21 days.`;
@@ -194,7 +214,7 @@ export default function LeaveForm({ today, balance, medicalCount = 0 }) {
       let body;
       if (type === 'full') body = { type, category, medical, start, end, reason };
       else if (type === 'half') body = { type, category, medical, start: date, end: date, half, reason };
-      else body = { type, date: shortDate, from, to, noReturn, reason };
+      else body = { type, mode, date: shortDate, from, to: mode === 'late' ? arrive : to, reason };
       let res;
       if (certNeeded) {
         // The certificate travels with the request, so one can't be saved without the other.
@@ -266,27 +286,40 @@ export default function LeaveForm({ today, balance, medicalCount = 0 }) {
 
       {type === 'short' ? (
         <>
+          <div className="field" role="radiogroup" aria-label="What kind of short leave">
+            <span className="lbl">What kind?</span>
+            <div className="kinds">
+              {SHORT_KINDS.map((k) => (
+                <button key={k.key} type="button" role="radio" aria-checked={mode === k.key} className={mode === k.key ? 'on' : ''} onClick={() => { setMode(k.key); setError(''); }}>
+                  <b>{k.label}</b>
+                  <small>{k.hint}</small>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="field">
             <label className="lbl" htmlFor="sdate">Date</label>
             <input id="sdate" className="input" type="date" value={shortDate} onChange={(e) => setShortDate(e.target.value)} required />
           </div>
-          <div className={noReturn ? '' : 'two'}>
+          {mode === 'late' ? (
             <div className="field">
-              <label className="lbl" htmlFor="sfrom">Leaving at</label>
-              <input id="sfrom" className="input" type="time" value={from} onChange={(e) => setFrom(e.target.value)} required />
+              <label className="lbl" htmlFor="sarrive">I&apos;ll be in at</label>
+              <input id="sarrive" className="input" type="time" value={arrive} onChange={(e) => setArrive(e.target.value)} required />
             </div>
-            {!noReturn && (
+          ) : (
+            <div className={noReturn ? '' : 'two'}>
               <div className="field">
-                <label className="lbl" htmlFor="sto">Back by</label>
-                <input id="sto" className="input" type="time" value={to} onChange={(e) => setTo(e.target.value)} required />
+                <label className="lbl" htmlFor="sfrom">Leaving at</label>
+                <input id="sfrom" className="input" type="time" value={from} onChange={(e) => setFrom(e.target.value)} required />
               </div>
-            )}
-          </div>
-          <button type="button" role="switch" aria-checked={noReturn} className={`swrow ${noReturn ? 'on' : ''}`} onClick={() => { setNoReturn(!noReturn); setError(''); }}>
-            <b>I won&apos;t be coming back today</b>
-            <small>{noReturn ? 'Leaving for the day.' : "Turn on if you're leaving for the day."}</small>
-            <span className="tog" aria-hidden="true" />
-          </button>
+              {!noReturn && (
+                <div className="field">
+                  <label className="lbl" htmlFor="sto">Back by</label>
+                  <input id="sto" className="input" type="time" value={to} onChange={(e) => setTo(e.target.value)} required />
+                </div>
+              )}
+            </div>
+          )}
         </>
       ) : type === 'full' ? (
         <div className="two">

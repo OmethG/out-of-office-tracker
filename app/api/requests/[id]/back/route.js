@@ -36,7 +36,7 @@ export async function POST(req, { params }) {
 
   const back = atLocal(localDate(now), time);
   if (back < new Date(row.leave_time)) {
-    return NextResponse.json({ error: `That's before you left (${timeLabel(row.leave_time)}).` }, { status: 400 });
+    return NextResponse.json({ error: row.coming_late ? "That's before 9:00 AM." : `That's before you left (${timeLabel(row.leave_time)}).` }, { status: 400 });
   }
   if (back - now > CLOCK_SLACK_MS) {
     return NextResponse.json({ error: "That time hasn't come yet. Choose the time you got back." }, { status: 400 });

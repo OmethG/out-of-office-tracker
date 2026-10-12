@@ -31,6 +31,8 @@ async function readBody(req) {
 }
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+// Coming to office late after this is a morning half day, not short leave.
+const LATEST_ARRIVAL = '13:00';
 
 // Staff: send a leave request: full day(s) or half day (annual or casual), or short leave (a few hours).
 export async function POST(req) {
@@ -60,23 +62,45 @@ export async function POST(req) {
   let cert = null;
   let medical = false;
   let noReturn = false;
+  let comingLate = false;
 
   if (type === 'short') {
     start = end = body?.date;
     const { from } = body || {};
     if (!isYmd(start)) return NextResponse.json({ error: 'Choose the date.' }, { status: 400 });
-    // "I won't be coming back today": the leave runs to the end of the working day.
-    noReturn = body?.noReturn === true || body?.noReturn === 'true';
-    const to = noReturn ? (isSaturday(start) ? SATURDAY_END : DAY_END) : body?.to;
-    if (!HHMM.test(from || '') || !HHMM.test(to || '')) {
-      return NextResponse.json({ error: noReturn ? 'Choose the time you are leaving.' : 'Choose the leaving and back-by times.' }, { status: 400 });
+    // Three kinds: 'out' (out of office for a few hours), 'late' (coming to office late), 'early' (leaving office early).
+    const mode = ['out', 'late', 'early'].includes(body?.mode)
+      ? body.mode
+      : body?.noReturn === true || body?.noReturn === 'true' ? 'early' : 'out';
+    if (mode === 'late') {
+      // Coming to office late: from 9:00 until the arrival time, no later than 1 PM.
+      const arrive = body?.to;
+      if (isSunday(start)) return NextResponse.json({ error: 'Sunday is already a day off. Choose a working day.' }, { status: 400 });
+      if (!HHMM.test(arrive || '')) return NextResponse.json({ error: 'Choose the time you will be in.' }, { status: 400 });
+      if (arrive <= DAY_START) return NextResponse.json({ error: 'The day starts at 9:00 AM. Choose a later time.' }, { status: 400 });
+      if (isSaturday(start) ? arrive >= SATURDAY_END : arrive > LATEST_ARRIVAL) {
+        return NextResponse.json({ error: 'Coming in after 1 PM? Please take a morning half day instead.' }, { status: 400 });
+      }
+      leaveTime = atLocal(start, DAY_START);
+      returnTime = atLocal(start, arrive);
+      if (returnTime <= new Date()) {
+        return NextResponse.json({ error: 'That time has already passed. Choose a later time.' }, { status: 400 });
+      }
+      comingLate = true;
+    } else {
+      // Leaving office early: the leave runs to the end of the working day.
+      noReturn = mode === 'early';
+      const to = noReturn ? (isSaturday(start) ? SATURDAY_END : DAY_END) : body?.to;
+      if (!HHMM.test(from || '') || !HHMM.test(to || '')) {
+        return NextResponse.json({ error: noReturn ? 'Choose the time you are leaving.' : 'Choose the leaving and back-by times.' }, { status: 400 });
+      }
+      if (noReturn && to <= from) {
+        return NextResponse.json({ error: `The working day ends at ${isSaturday(start) ? '1:00 PM' : '5:00 PM'}. Choose an earlier leaving time.` }, { status: 400 });
+      }
+      if (to <= from) return NextResponse.json({ error: '"Back by" needs to be after "Leaving at".' }, { status: 400 });
+      leaveTime = atLocal(start, from);
+      returnTime = atLocal(start, to);
     }
-    if (noReturn && to <= from) {
-      return NextResponse.json({ error: `The working day ends at ${isSaturday(start) ? '1:00 PM' : '5:00 PM'}. Choose an earlier leaving time.` }, { status: 400 });
-    }
-    if (to <= from) return NextResponse.json({ error: '"Back by" needs to be after "Leaving at".' }, { status: 400 });
-    leaveTime = atLocal(start, from);
-    returnTime = atLocal(start, to);
   } else {
     start = body?.start;
     end = type === 'half' ? body?.start : body?.end;
@@ -131,13 +155,13 @@ export async function POST(req) {
   // The request and its certificate are saved together, or not at all.
   const insert = `INSERT INTO leave_requests
       (kind, leave_type, start_date, end_date, half, days, leave_category,
-       employee_name, employee_email, leave_time, expected_return_time, reason, decision_token, certificate_name, medical, no_return)
-     VALUES ('leave', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       employee_name, employee_email, leave_time, expected_return_time, reason, decision_token, certificate_name, medical, no_return, coming_late)
+     VALUES ('leave', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      RETURNING *`;
   const { rows } = await query(
     cert
       ? `WITH r AS (${insert}),
-              a AS (INSERT INTO leave_attachments (request_id, name, mime, size, data) SELECT id, $13, $16, $17, $18 FROM r)
+              a AS (INSERT INTO leave_attachments (request_id, name, mime, size, data) SELECT id, $13, $17, $18, $19 FROM r)
          SELECT * FROM r`
       : insert,
     [
@@ -156,6 +180,7 @@ export async function POST(req) {
       cert ? cert.name : null,
       medical,
       noReturn,
+      comingLate,
       ...(cert ? [cert.mime, cert.data.length, cert.data] : []),
     ]
   );

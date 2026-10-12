@@ -535,3 +535,13 @@ a, button, summary { transition: transform .08s ease, opacity .08s ease, backgro
 .notif-off { border: 1px solid var(--line); background: var(--card); color: var(--muted); }
 .notif-btn:disabled, .notif-off:disabled { opacity: .6; }
 .notif .error { grid-column: 1 / -1; margin-top: 8px; }
+
+/* Short leave: coming to office late / out of office for a few hours / leaving office early */
+.kinds { display: grid; gap: 8px; }
+.kinds button { width: 100%; font: inherit; color: var(--ink); text-align: left; cursor: pointer; display: grid; gap: 1px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 14px; }
+.kinds button b { font-size: 16px; }
+.kinds button small { font-size: 13.5px; color: var(--muted); }
+.kinds button.on { border: 2px solid var(--purple); padding: 10px 13px; background: var(--purple-soft); }
+.kinds button.on b { color: var(--purple); }
+.kinds button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.kinds button:active { transform: scale(.99); }
