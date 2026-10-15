@@ -30,8 +30,13 @@ export default function Notifications({ publicKey }) {
       if (!supported()) return setState(isIos() && !standalone() ? 'ios-browser' : 'unsupported');
       try {
         const reg = await navigator.serviceWorker.register('/sw.js');
-        const sub = await reg.pushManager.getSubscription();
+        let sub = await reg.pushManager.getSubscription();
         if (Notification.permission === 'denied') return setState('blocked');
+        // Already allowed on this phone (e.g. after signing out and back in): switch straight back on.
+        if (!sub && Notification.permission === 'granted') {
+          await navigator.serviceWorker.ready;
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) }).catch(() => null);
+        }
         if (sub) {
           await sendToServer(sub.toJSON()).catch(() => {}); // keeps the phone linked to whoever is signed in
           return setState('on');
@@ -41,7 +46,7 @@ export default function Notifications({ publicKey }) {
         setState('unsupported');
       }
     })();
-  }, []);
+  }, [publicKey]);
 
   async function turnOn() {
     setBusy(true);
